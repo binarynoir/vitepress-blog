@@ -5,3 +5,4 @@ coverage
 package-lock.json
 test/fixtures/site/.vitepress/dist
 test/fixtures/site/.vitepress/cache
+test/.ssr-dist

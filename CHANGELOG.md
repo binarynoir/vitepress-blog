@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `useBlog()` from `@binarynoir/vitepress-blog/client` no longer breaks a site's build: during the server-side build, Node loads VitePress's node entry, which has none of the client functions it imported by name. It now imports VitePress as a namespace and does nothing on the server
+
 ## [0.1.0] - 2026-10-20
 
 ### Added

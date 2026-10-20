@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
-  { ignores: ['dist/**', '**/.vitepress/dist/**', '**/.vitepress/cache/**'] },
+  { ignores: ['dist/**', 'test/.ssr-dist/**', '**/.vitepress/dist/**', '**/.vitepress/cache/**'] },
   ...tseslint.configs.recommended,
   {
     rules: {
