@@ -1,6 +1,6 @@
 {
   "name": "@binarynoir/vitepress-blog",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Turn any VitePress 2 page into a blog post with frontmatter. A main blog, folder-scoped section blogs, sticky posts, pagination, keyword filters and an RSS feed for each.",
   "keywords": [
     "vitepress",
