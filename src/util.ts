@@ -55,12 +55,3 @@ export function toUrlPath(routePath: string, cleanUrls: boolean): string {
 export function joinUrl(base: string, urlPath: string): string {
   return `${base.replace(/\/+$/, '')}/${urlPath.replace(/^\/+/, '')}`;
 }
-
-/** `2026-10-01` for a `datetime` attribute. */
-export function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-export function formatDate(date: Date, locale: string, format: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...format }).format(date);
-}

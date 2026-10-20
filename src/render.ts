@@ -1,24 +1,17 @@
 import path from 'node:path';
 import type { IndexPage, PostPage } from './collect.js';
+import { formatPostDate, resolveTimeZone, toDateTimeAttribute, yearIn, type DateDisplay } from './dates.js';
 import { toFeedPath } from './feed.js';
 import { DEFAULT_LABELS, type BlogAuthor, type BlogLabels, type BlogOptions } from './types.js';
-import {
-  escapeHtml,
-  escapeMarkdown,
-  escapeTemplateText,
-  formatDate,
-  isExternalUrl,
-  toIsoDate,
-  toMarkdownUrl,
-  toPageLink,
-} from './util.js';
+import { escapeHtml, escapeMarkdown, escapeTemplateText, isExternalUrl, toMarkdownUrl, toPageLink } from './util.js';
 
 /** Marker a blog page can use to say where its list of posts goes. Without it the list is appended. */
 export const BLOG_POSTS_PLACEHOLDER = '<!-- blog-posts -->';
 
 export interface RenderContext {
   locale: string;
-  dateFormat: Intl.DateTimeFormatOptions;
+  /** How dates and times are shown: format, time zone, and how a date and a time are joined. */
+  dates: DateDisplay;
   labels: BlogLabels;
   /** Absolute folder of the source file being rendered: relative image paths are written from here. */
   pageDirectory: string;
@@ -31,10 +24,18 @@ export function createRenderContext(
   pageDirectory: string,
   feeds: boolean = !!options.siteUrl,
 ): RenderContext {
+  const locale = options.locale ?? 'en-US';
+  const labels = { ...DEFAULT_LABELS, ...options.labels };
   return {
-    locale: options.locale ?? 'en-US',
-    dateFormat: options.dateFormat ?? { dateStyle: 'long' },
-    labels: { ...DEFAULT_LABELS, ...options.labels },
+    locale,
+    dates: {
+      locale,
+      timeZone: resolveTimeZone(options.timeZone),
+      dateFormat: options.dateFormat ?? { dateStyle: 'long' },
+      timeFormat: options.timeFormat ?? { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' },
+      dateTime: labels.dateTime,
+    },
+    labels,
     pageDirectory,
     feeds,
   };
@@ -76,8 +77,11 @@ export function toImageSource(post: PostPage, pageDirectory: string): string {
   return relative.startsWith('.') ? relative : `./${relative}`;
 }
 
-function renderTime(date: Date, context: RenderContext): string {
-  return `<time datetime="${toIsoDate(date)}">${escapeTemplateText(formatDate(date, context.locale, context.dateFormat))}</time>`;
+/** A `<time>` element: the date, plus the time when the frontmatter gave one, in the blog's time zone. */
+function renderTime(date: Date, hasTime: boolean, context: RenderContext): string {
+  const value = { date, hasTime };
+  const attribute = toDateTimeAttribute(value, context.dates.timeZone);
+  return `<time datetime="${attribute}">${escapeTemplateText(formatPostDate(value, context.dates))}</time>`;
 }
 
 function renderAuthor(author: BlogAuthor): string {
@@ -131,18 +135,25 @@ interface MetaParts {
   badges: boolean;
 }
 
-/** One line of post details, joined with middle dots: badges, date, updated, reading time, authors. */
+/**
+ * One line of post details, joined with middle dots: badges, date, updated,
+ * reading time, authors. In a byline (`include.updated`) the dates are
+ * labelled "Published" and "Updated"; on cards the date stands alone.
+ */
 function renderMeta(post: PostPage, context: RenderContext, include: MetaParts): string {
-  const { date, updated, readingMinutes, authors, draft, sticky } = post.post;
+  const { date, dateHasTime, updated, updatedHasTime, readingMinutes, authors, draft, sticky } = post.post;
   const parts: string[] = [];
   if (include.badges) {
     const badges = [draft && renderBadge('draft', context), sticky && renderBadge('sticky', context)];
     const shown = badges.filter(Boolean).join(' ');
     if (shown) parts.push(shown);
   }
-  if (date) parts.push(renderTime(date, context));
+  if (date) {
+    const time = renderTime(date, dateHasTime, context);
+    parts.push(include.updated ? `${escapeMarkdown(context.labels.published)} ${time}` : time);
+  }
   if (include.updated && updated && (!date || updated.getTime() !== date.getTime())) {
-    parts.push(`${escapeMarkdown(context.labels.updated)} ${renderTime(updated, context)}`);
+    parts.push(`${escapeMarkdown(context.labels.updated)} ${renderTime(updated, updatedHasTime, context)}`);
   }
   if (readingMinutes) parts.push(escapeMarkdown(fill(context.labels.readingTime, { n: String(readingMinutes) })));
   if (include.authors) {
@@ -189,7 +200,7 @@ function renderCard(post: PostPage, context: RenderContext, index: IndexPage): s
 }
 
 function renderCompactItem(post: PostPage, context: RenderContext): string {
-  const date = post.post.date ? `${renderTime(post.post.date, context)} ` : '';
+  const date = post.post.date ? `${renderTime(post.post.date, post.post.dateHasTime, context)} ` : '';
   const badges = [post.post.draft && renderBadge('draft', context), post.post.sticky && renderBadge('sticky', context)]
     .filter(Boolean)
     .join(' ');
@@ -221,7 +232,7 @@ export function renderGroup(posts: PostPage[], index: IndexPage, context: Render
 function renderYears(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
   const years = new Map<string, PostPage[]>();
   for (const post of posts) {
-    const year = post.post.date ? String(post.post.date.getUTCFullYear()) : context.labels.undated;
+    const year = post.post.date ? String(yearIn(post.post.date, context.dates.timeZone)) : context.labels.undated;
     years.set(year, [...(years.get(year) ?? []), post]);
   }
   const lines: string[] = [];

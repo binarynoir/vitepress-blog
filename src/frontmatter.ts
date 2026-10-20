@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { parse } from 'yaml';
+import { parsePostDate, resolveTimeZone } from './dates.js';
 import type {
   BlogAuthor,
   BlogFeedConfig,
@@ -68,14 +69,12 @@ export function toStringList(value: unknown): string[] {
 }
 
 /**
- * YAML gives a bare `2026-10-01` as a string, while gray-matter (VitePress's
- * parser) gives a `Date`. Both are accepted, and a date without a time is UTC.
+ * Reads a frontmatter date: `2026-10-20`, `2026-10-20 14:30`, or either with
+ * an offset (`…T14:30:00-04:00`, `…Z`). A value without an offset is read in
+ * `timeZone`. See `parsePostDate`.
  */
-export function toDate(value: unknown): Date | null {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  if (typeof value !== 'string' && typeof value !== 'number') return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+export function toDate(value: unknown, timeZone = 'UTC'): Date | null {
+  return parsePostDate(value, timeZone)?.date ?? null;
 }
 
 function toAuthor(value: unknown, options: BlogOptions): BlogAuthor | null {
@@ -184,11 +183,16 @@ export function resolvePostData(
   const clean = (text: string) => (stripTags ? stripTagSyntax(text) : text);
 
   const image = toRecord(pick('image'));
+  const timeZone = resolveTimeZone(options.timeZone);
+  const date = parsePostDate(pick('date'), timeZone);
+  const updated = parsePostDate(pick('updated'), timeZone);
   return {
     title: clean(toText(post.title) || toText(data.title) || readHeading(content)) || fallbackTitle,
     summary: clean(toText(post.summary) || toText(data.description) || readExcerpt(content)),
-    date: toDate(pick('date')),
-    updated: toDate(pick('updated')),
+    date: date?.date ?? null,
+    dateHasTime: date?.hasTime ?? false,
+    updated: updated?.date ?? null,
+    updatedHasTime: updated?.hasTime ?? false,
     image: toText(image.src) || toText(pick('image')),
     imageAlt: toText(image.alt) || toText(post.imageAlt) || toText(data.imageAlt),
     imageFit: (toText(image.fit) || toText(post.imageFit)) === 'contain' ? 'contain' : 'cover',

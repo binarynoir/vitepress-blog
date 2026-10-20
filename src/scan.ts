@@ -109,6 +109,7 @@ function toOptionsKey(options: BlogOptions): string {
     options.pageSize,
     options.stickyLimit,
     options.rssLink,
+    options.timeZone,
   ]);
 }
 

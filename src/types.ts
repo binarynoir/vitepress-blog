@@ -15,8 +15,21 @@ export interface BlogOptions {
   siteUrl?: string;
   /** Locale for dates in bylines and cards. Default: `'en-US'`. */
   locale?: string;
-  /** How dates are written. Default: `{ dateStyle: 'long' }`, in UTC. */
+  /** How dates are written. Default: `{ dateStyle: 'long' }`. */
   dateFormat?: Intl.DateTimeFormatOptions;
+  /**
+   * How times are written, for dates whose frontmatter gives one
+   * (`2026-10-20 14:30`). Default: `{ hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }`,
+   * as in "2:30 PM EDT".
+   */
+  timeFormat?: Intl.DateTimeFormatOptions;
+  /**
+   * The time zone frontmatter times without an offset are in, and that every
+   * date and time is shown in: an IANA name such as `'America/New_York'`.
+   * A value with an offset (`2026-10-20T14:30:00-04:00`, `…Z`) is read as
+   * written. Default: `'UTC'`.
+   */
+  timeZone?: string;
   /** Reading speed for the "5 min read" estimate. `0` hides it. Default: `200`. */
   wordsPerMinute?: number;
   /** Add an author, date and tags line under each post's title. Default: `true`. */
@@ -68,8 +81,12 @@ export interface BlogOptions {
 export interface BlogLabels {
   /** Before the author names: "By Jane Doe". */
   by: string;
+  /** Before a post's `date` in its byline: "Published October 20, 2026". */
+  published: string;
   /** Before a post's `updated` date. */
   updated: string;
+  /** A date and its time: "{date} at {time}". */
+  dateTime: string;
   /** Reading time: "{n} min read". */
   readingTime: string;
   newer: string;
@@ -102,7 +119,9 @@ export interface BlogLabels {
 
 export const DEFAULT_LABELS: BlogLabels = {
   by: 'By',
+  published: 'Published',
   updated: 'Updated',
+  dateTime: '{date} at {time}',
   readingTime: '{n} min read',
   newer: 'Newer post',
   older: 'Older post',
@@ -163,8 +182,14 @@ export interface BlogIndexConfig {
 export interface BlogPostData {
   title: string;
   summary: string;
+  /** When the post was published, from `date`. */
   date: Date | null;
+  /** Whether `date` gave a time, not just a day. */
+  dateHasTime: boolean;
+  /** When the post was last changed, from `updated`. */
   updated: Date | null;
+  /** Whether `updated` gave a time, not just a day. */
+  updatedHasTime: boolean;
   /** As written: a path relative to the post, a public path (`/x.png`) or a URL. */
   image: string;
   imageAlt: string;

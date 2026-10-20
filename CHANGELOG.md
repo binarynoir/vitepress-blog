@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Times in `date` and `updated`: `2026-10-20 14:30`, `2026-10-20T14:30:00`, or either with an offset (`-04:00`, `Z`). A time shows only when one is given, and posts on the same day sort by it
+- `timeZone` option: the IANA time zone that times without an offset are read in, and that dates and times are shown in. Default `UTC`
+- `timeFormat` option, and `published` and `dateTime` labels
+- The byline labels both dates: "Published … · Updated …"
+
+### Changed
+
+- `date` and `updated` must be written as `YYYY-MM-DD`, optionally with a time and offset. Other forms that JavaScript happened to parse, such as `October 20, 2026`, are no longer read
+- Year headings use the year in the `timeZone`, so a post late on December 31 stays in its own year
+
 ## [0.1.1] - 2026-10-20
 
 ### Fixed

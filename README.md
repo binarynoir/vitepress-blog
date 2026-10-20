@@ -127,8 +127,8 @@ with every default; an object sets its details.
 ---
 title: We launched
 blog:
-  date: 2026-10-01
-  updated: 2026-10-05
+  date: 2026-10-01 09:00
+  updated: 2026-10-05 16:30
   summary: Team A's first release is out.
   image: ./launch.png
   imageAlt: The release dashboard
@@ -144,8 +144,8 @@ blog:
 | --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `title`         | the page's `title`, then its `#` heading   | Title in lists, feeds and social cards.                                                                                                                   |
 | `summary`       | the page's `description`, then first prose | One or two sentences for cards, feeds and `<meta name="description">`.                                                                                    |
-| `date`          | none                                       | Publication date. Posts are sorted newest first; undated posts go last.                                                                                   |
-| `updated`       | none                                       | Shown in the byline and used as the feed's last-updated time.                                                                                             |
+| `date`          | none                                       | When the post was published: a date, or a date and time. See [Dates and times](#dates-and-times). Newest first; undated posts go last.                    |
+| `updated`       | none                                       | When the post was last changed, in the same forms. The byline shows both: "Published … · Updated …". It is the feed's last-updated time.                  |
 | `image`         | none                                       | Card, social and feed image: a path relative to the post, a public path (`/cover.png`) or a URL. `{ src, alt, fit, position }` also works.                |
 | `imageAlt`      | `''`                                       | Alt text for the image.                                                                                                                                   |
 | `imageFit`      | `cover`                                    | How cards fit the image in their frame: `cover` crops it to fill the frame, `contain` shows all of it, letterboxed. Use `contain` for logos and diagrams. |
@@ -163,6 +163,38 @@ blog:
 Title, description, date, author(s), image and tags may also be written at the
 top level of the frontmatter, as other blog tools expect. A value under `blog`
 wins.
+
+### Dates and times
+
+`date` and `updated` take a date, or a date and a time, in any of these forms:
+
+| Written                     | Means                                       |
+| --------------------------- | ------------------------------------------- |
+| `2026-10-20`                | A day. Shows "October 20, 2026".            |
+| `2026-10-20 14:30`          | A day and a time, in the `timeZone` option. |
+| `2026-10-20T14:30:00`       | The same, with a `T` and seconds.           |
+| `2026-10-20T14:30:00-04:00` | An exact moment, with its offset from UTC.  |
+| `2026-10-20T18:30:00Z`      | An exact moment, in UTC.                    |
+
+```yaml
+blog:
+  date: 2026-10-20 14:30
+  updated: 2026-10-21 09:05
+```
+
+- **A time shows only when you give one.** A date alone is shown as a date,
+  never as "12:00 AM".
+- **Times without an offset are in the `timeZone` option**, `UTC` unless you
+  set one, so the same frontmatter means the same moment on every build
+  machine. Set `timeZone: 'America/New_York'` and write local times; daylight
+  saving is taken care of. Dates and times are also shown in that time zone.
+- **The byline tells readers both:** "Published October 20, 2026 at 2:30 PM
+  EDT · Updated October 21, 2026 at 9:05 AM EDT". Cards show the published
+  date alone.
+- **Posts on the same day sort by their times**, newest first, and a date
+  alone counts as the start of its day.
+- Feeds and social tags use the exact moment: `pubDate`, `lastBuildDate`,
+  `article:published_time` and `article:modified_time`.
 
 ## Blog pages
 
@@ -333,32 +365,36 @@ link that copy. Public paths (`/cover.png`) and URLs are linked as they are.
 
 ## Options
 
-| Option           | Default                 | What it does                                                                                             |
-| ---------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| `siteUrl`        | `sitemap.hostname`      | Absolute URL of the published site, for feeds and social tags.                                           |
-| `authors`        | `{}`                    | Authors posts can name by key: `{ jane: { name, url, email } }` or `{ jane: 'Jane Doe' }`.               |
-| `defaultAuthor`  | none                    | Author for posts that don't name one.                                                                    |
-| `locale`         | `'en-US'`               | Locale for dates and author lists ("Jane and Sam").                                                      |
-| `dateFormat`     | `{ dateStyle: 'long' }` | `Intl.DateTimeFormat` options. Dates are shown in UTC.                                                   |
-| `wordsPerMinute` | `200`                   | For "5 min read". `0` hides reading time.                                                                |
-| `byline`         | `true`                  | Author, date and tags under each post's title.                                                           |
-| `cover`          | `false`                 | Each post's image under its byline.                                                                      |
-| `postNav`        | `true`                  | Newer and older post links at the end of each post.                                                      |
-| `drafts`         | `false`                 | List drafts, marked. Pass `process.env.NODE_ENV !== 'production'` for dev only.                          |
-| `stripTags`      | `true`                  | Remove [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/) syntax from titles and summaries. |
-| `feedLimit`      | `20`                    | Most posts in each feed.                                                                                 |
-| `imagesDir`      | `'blog-images'`         | Output folder for copied post images.                                                                    |
-| `pageSize`       | `10`                    | Posts per page on blog pages that don't set `pageSize`. `0` turns pages off.                             |
-| `stickyLimit`    | `0` (all)               | Most pinned sticky posts on blog pages that don't set `stickyLimit`.                                     |
-| `rssLink`        | `true`                  | A "Subscribe" RSS link on blog pages and blocks that don't set `rssLink`.                                |
-| `labels`         | English                 | Words the plugin writes, for translating. See below.                                                     |
+| Option           | Default                                                         | What it does                                                                                                          |
+| ---------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `siteUrl`        | `sitemap.hostname`                                              | Absolute URL of the published site, for feeds and social tags.                                                        |
+| `authors`        | `{}`                                                            | Authors posts can name by key: `{ jane: { name, url, email } }` or `{ jane: 'Jane Doe' }`.                            |
+| `defaultAuthor`  | none                                                            | Author for posts that don't name one.                                                                                 |
+| `locale`         | `'en-US'`                                                       | Locale for dates and author lists ("Jane and Sam").                                                                   |
+| `dateFormat`     | `{ dateStyle: 'long' }`                                         | `Intl.DateTimeFormat` options for dates.                                                                              |
+| `timeFormat`     | `{ hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }` | `Intl.DateTimeFormat` options for times, as in "2:30 PM EDT". Only dates given with a time show one.                  |
+| `timeZone`       | `'UTC'`                                                         | The IANA time zone (`'America/New_York'`) that times without an offset are in, and that dates and times are shown in. |
+| `wordsPerMinute` | `200`                                                           | For "5 min read". `0` hides reading time.                                                                             |
+| `byline`         | `true`                                                          | Author, date and tags under each post's title.                                                                        |
+| `cover`          | `false`                                                         | Each post's image under its byline.                                                                                   |
+| `postNav`        | `true`                                                          | Newer and older post links at the end of each post.                                                                   |
+| `drafts`         | `false`                                                         | List drafts, marked. Pass `process.env.NODE_ENV !== 'production'` for dev only.                                       |
+| `stripTags`      | `true`                                                          | Remove [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/) syntax from titles and summaries.              |
+| `feedLimit`      | `20`                                                            | Most posts in each feed.                                                                                              |
+| `imagesDir`      | `'blog-images'`                                                 | Output folder for copied post images.                                                                                 |
+| `pageSize`       | `10`                                                            | Posts per page on blog pages that don't set `pageSize`. `0` turns pages off.                                          |
+| `stickyLimit`    | `0` (all)                                                       | Most pinned sticky posts on blog pages that don't set `stickyLimit`.                                                  |
+| `rssLink`        | `true`                                                          | A "Subscribe" RSS link on blog pages and blocks that don't set `rssLink`.                                             |
+| `labels`         | English                                                         | Words the plugin writes, for translating. See below.                                                                  |
 
 ```ts
 withBlog(config, {
   locale: 'de-DE',
   labels: {
     by: 'Von',
+    published: 'Veröffentlicht',
     updated: 'Aktualisiert',
+    dateTime: '{date} um {time}',
     readingTime: '{n} Min. Lesezeit',
     newer: 'Neuerer Beitrag',
     older: 'Älterer Beitrag',
