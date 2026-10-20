@@ -155,7 +155,7 @@ blog:
 | `category`      | none                                       | Written to the feed and `article:section`.                                                                                                                |
 | `scope`         | `section`                                  | `site` (or `global`) also lists the post on the main blog. See [Scopes](#scopes).                                                                         |
 | `sticky`        | `false`                                    | Pinned to the top of its blog pages, above the paginated posts, with a Pinned badge. See [Sticky posts](#sticky-posts).                                   |
-| `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: use `srcExclude` to hide it.                                                                 |
+| `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: to leave drafts out of the build, the sidebar and the navbar too, see [Drafts](#drafts).     |
 | `byline`        | the `byline` option                        | `false` hides this post's byline.                                                                                                                         |
 | `cover`         | the `cover` option                         | `true` shows this post's image under its byline.                                                                                                          |
 | `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links.                                                                                                            |
@@ -195,6 +195,35 @@ blog:
   alone counts as the start of its day.
 - Feeds and social tags use the exact moment: `pubDate`, `lastBuildDate`,
   `article:published_time` and `article:modified_time`.
+
+### Drafts
+
+`draft: true` keeps a post out of blog lists, `::: blog-posts` blocks and
+feeds, but the page is still built and can be opened by its URL. With the
+`drafts` option on, drafts are listed too, with a Draft badge, which is handy in
+`vitepress dev`.
+
+To leave drafts out of the build entirely, use
+[`@binarynoir/vitepress-exclude`](https://binarynoir.tech/plugins/exclude/)'s
+`excludeFrontmatter` option, and the same option in Auto Sidebar and Auto
+Navbar to hide them from the menus. The blog lists only what VitePress builds,
+so nothing else changes:
+
+```ts
+// Drafts stay out of the production build, and show (marked) in `vitepress dev`.
+const isBuild = process.env.NODE_ENV === 'production';
+const excludeFrontmatter = isBuild ? ['draft', 'blog.draft'] : [];
+const blogOptions = { drafts: !isBuild };
+
+export default defineConfig({
+  srcExclude: excludeSrc(docsRoot, { excludeFrontmatter }),
+  themeConfig: {
+    sidebar: generateSidebar(docsRoot, { excludeFrontmatter }),
+    nav: generateNav(docsRoot, { excludeFrontmatter }),
+  },
+  // ...the blog's pieces, with blogOptions
+});
+```
 
 ## Blog pages
 
