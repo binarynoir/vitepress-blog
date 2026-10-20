@@ -1,0 +1,418 @@
+/*
+ * Uses VitePress theme variables, so it follows light and dark mode. Override
+ * the --vp-blog-* variables to restyle without touching the rules.
+ */
+:root {
+  --vp-blog-card-bg: var(--vp-c-bg-soft);
+  --vp-blog-card-border: var(--vp-c-divider);
+  --vp-blog-card-radius: 12px;
+  --vp-blog-meta-color: var(--vp-c-text-2);
+  --vp-blog-tag-bg: var(--vp-c-default-soft);
+  --vp-blog-tag-color: var(--vp-c-text-2);
+  --vp-blog-accent: var(--vp-c-brand-1);
+}
+
+/* Markdown inside the generated blocks is wrapped in <p>; its margins are handled here instead. */
+.vp-blog-card p,
+.vp-blog-byline p,
+.vp-blog-post-nav p {
+  margin: 0;
+}
+
+.vp-blog-list {
+  display: grid;
+  gap: 20px;
+  margin: 24px 0;
+}
+
+.vp-blog-list--grid {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.vp-blog-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--vp-blog-card-border);
+  border-radius: var(--vp-blog-card-radius);
+  background: var(--vp-blog-card-bg);
+  transition: border-color 0.25s;
+}
+
+.vp-blog-card:hover {
+  border-color: var(--vp-blog-accent);
+}
+
+.vp-blog-card--sticky {
+  border-color: var(--vp-blog-accent);
+}
+
+.vp-blog-card--draft {
+  border-style: dashed;
+  opacity: 0.8;
+}
+
+.vp-blog-card__image a {
+  display: block;
+}
+
+.vp-blog-card__image img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: var(--vp-blog-image-position, center);
+}
+
+/* `imageFit: contain`: the whole image, letterboxed, for logos and diagrams. */
+.vp-blog-card--contain .vp-blog-card__image {
+  background: var(--vp-c-bg-alt);
+}
+
+.vp-blog-card--contain .vp-blog-card__image img {
+  box-sizing: border-box;
+  padding: 12px 16px;
+  object-fit: contain;
+}
+
+.vp-blog-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px 20px;
+}
+
+.vp-blog-card__title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.vp-blog-card__title a {
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+}
+
+.vp-blog-card__title a:hover {
+  color: var(--vp-blog-accent);
+}
+
+.vp-blog-card__meta,
+.vp-blog-byline {
+  color: var(--vp-blog-meta-color);
+  font-size: 14px;
+}
+
+.vp-blog-card__summary {
+  color: var(--vp-c-text-1);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.vp-blog-card__tags {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* List: image beside the text on wide screens. */
+@media (min-width: 640px) {
+  .vp-blog-list--list .vp-blog-card--with-image {
+    flex-direction: row;
+  }
+
+  .vp-blog-list--list .vp-blog-card__image {
+    flex: 0 0 34%;
+  }
+
+  .vp-blog-list--list .vp-blog-card__image a,
+  .vp-blog-list--list .vp-blog-card__image p {
+    height: 100%;
+  }
+
+  .vp-blog-list--list .vp-blog-card__image img {
+    height: 100%;
+    aspect-ratio: auto;
+    min-height: 160px;
+  }
+}
+
+/* Compact: a dated list of titles. */
+.vp-blog-list--compact {
+  display: block;
+}
+
+.vp-blog-list--compact ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+.vp-blog-list--compact li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: baseline;
+}
+
+.vp-blog-list--compact time {
+  min-width: 10em;
+  color: var(--vp-blog-meta-color);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vp-blog-tag,
+.vp-blog-badge,
+.vp-blog-tags a,
+.vp-blog-card__tags a,
+.vp-blog-byline__tags a {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--vp-blog-tag-bg);
+  color: var(--vp-blog-tag-color);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+/* Keyword chips are links that filter their blog. */
+.vp-blog .vp-blog-tags a,
+.vp-blog .vp-blog-card__tags a,
+.vp-blog-byline__tags a {
+  text-decoration: none;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
+}
+
+.vp-blog .vp-blog-tags a:hover,
+.vp-blog .vp-blog-card__tags a:hover,
+.vp-blog-byline__tags a:hover,
+.vp-blog-tags a.is-active,
+.vp-blog-card__tags a.is-active {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
+}
+
+.vp-blog-badge--sticky {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+.vp-blog-badge--draft {
+  background: var(--vp-c-warning-soft);
+  color: var(--vp-c-warning-1);
+}
+
+.vp-blog-empty {
+  color: var(--vp-blog-meta-color);
+  font-style: italic;
+}
+
+/* Post pages. */
+.vp-blog-byline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 24px;
+}
+
+.vp-blog-cover img {
+  width: 100%;
+  border-radius: var(--vp-blog-card-radius);
+}
+
+.vp-blog-post-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.vp-blog-post-nav__older {
+  text-align: right;
+}
+
+.vp-blog-post-nav__label {
+  color: var(--vp-blog-meta-color);
+  font-size: 13px;
+}
+
+.vp-blog-post-nav__all {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 14px;
+}
+
+@media (max-width: 639px) {
+  .vp-blog-post-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .vp-blog-post-nav__older {
+    text-align: left;
+  }
+}
+
+/* The blog: keyword list, filter banner, pinned posts and page links. */
+.vp-blog {
+  scroll-margin-top: calc(var(--vp-nav-height, 64px) + 24px);
+}
+
+.vp-blog-tags {
+  margin: 16px 0 8px;
+  line-height: 2;
+}
+
+.vp-blog-tags p {
+  margin: 0;
+}
+
+.vp-blog-tags__label {
+  margin-right: 8px;
+  color: var(--vp-blog-meta-color);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* The post count in a keyword pill: a small counter badge inside it. */
+.vp-blog-tags__count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: 1px;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
+}
+
+.vp-blog-tags a:hover .vp-blog-tags__count,
+.vp-blog-tags a.is-active .vp-blog-tags__count {
+  background: var(--vp-blog-accent);
+  /* The page background, so the number stays readable on the accent in light and dark mode. */
+  color: var(--vp-c-bg);
+}
+
+.vp-blog-filter {
+  margin: 16px 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--vp-c-default-soft);
+  font-size: 14px;
+}
+
+.vp-blog-filter__clear {
+  margin-left: 8px;
+}
+
+.vp-blog-sticky {
+  margin: 24px 0;
+}
+
+.vp-blog-sticky .vp-blog-list {
+  margin: 0;
+}
+
+.vp-blog-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 32px 0 8px;
+  font-size: 14px;
+}
+
+.vp-blog-pagination a,
+.vp-blog-pagination span {
+  min-width: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--vp-blog-card-border);
+  border-radius: 8px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.vp-blog-pagination a:hover {
+  border-color: var(--vp-blog-accent);
+}
+
+.vp-blog-pagination .is-current {
+  border-color: var(--vp-blog-accent);
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
+  font-weight: 600;
+}
+
+/* `hidden` must win over the display rules above. */
+.vp-blog [hidden] {
+  display: none !important;
+}
+
+/* A `::: blog-posts` block on any page: a blog's latest posts and a link to the blog. */
+.vp-blog-widget {
+  margin: 16px 0 24px;
+}
+
+.vp-blog-widget .vp-blog-list {
+  margin: 0;
+}
+
+/* A block's footer: the RSS link on the left, the link to the blog on the right. */
+.vp-blog-widget__footer {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.vp-blog-widget__footer p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.vp-blog-widget__footer .vp-blog-rss {
+  margin-right: auto;
+}
+
+/* The "Subscribe" RSS link on blog pages and blocks. */
+.vp-blog-subscribe {
+  margin: 8px 0;
+  text-align: right;
+}
+
+.vp-blog-subscribe p {
+  margin: 0;
+}
+
+.vp-blog-rss {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vp-blog-rss a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  text-decoration: none;
+}
+
+.vp-blog-rss__icon {
+  /* The RSS orange, as feed readers expect. */
+  color: #f26522;
+}
