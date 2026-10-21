@@ -154,7 +154,9 @@ describe('RSS links', () => {
 
   it('puts a Subscribe link to the feed on blog pages, when the site writes feeds', () => {
     expect(site.render('blog/index.md', { siteUrl: 'https://example.com' })).toContain(rss);
-    expect(site.render('blog/index.md', { siteUrl: 'https://example.com' })).toContain('Subscribe</a></span>');
+    expect(site.render('blog/index.md', { siteUrl: 'https://example.com' })).toContain(
+      '<span class="vp-blog-rss__text">Subscribe</span></a></span>',
+    );
     // Without a site URL no feed is written, so there is nothing to link.
     expect(site.render('blog/index.md')).not.toContain('vp-blog-rss');
   });

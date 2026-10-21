@@ -9,7 +9,7 @@
 
 const ITEM = '[data-vp-blog-item]';
 /** Links that filter the blog: the browse panel's chips, and the category and keyword links on cards. */
-const FILTER_LINKS = '.vp-blog-facet a, .vp-blog-card__category a, .vp-blog-card__tags a';
+const FILTER_LINKS = '.vp-blog-facet__chips a, .vp-blog-card__category a, .vp-blog-card__tags a';
 
 interface BlogLabels {
   showAll: string;
@@ -23,6 +23,10 @@ interface BlogLabels {
   postCountOne: string;
   noMatches: string;
   removeFilter: string;
+  more: string;
+  less: string;
+  filter: string;
+  noFilterMatches: string;
 }
 
 function readLabels(blog: HTMLElement): BlogLabels {
@@ -39,6 +43,10 @@ function readLabels(blog: HTMLElement): BlogLabels {
     postCountOne: dataset.labelPostCountOne ?? '{n} post',
     noMatches: dataset.labelNoMatches ?? 'No posts match these filters.',
     removeFilter: dataset.labelRemoveFilter ?? 'Remove filter: {filter}',
+    more: dataset.labelMore ?? '+{n} more',
+    less: dataset.labelLess ?? 'Show fewer',
+    filter: dataset.labelFilter ?? 'Filter {row}',
+    noFilterMatches: dataset.labelNoFilterMatches ?? 'Nothing matches.',
   };
 }
 
@@ -157,6 +165,88 @@ function markActive(anchor: HTMLAnchorElement, active: boolean): void {
   else anchor.removeAttribute('aria-current');
 }
 
+/** A row with more chips than this gets a field to narrow them, when it is open. */
+const FILTER_FIELD_MIN = 30;
+
+function chipName(anchor: HTMLAnchorElement): string {
+  return (anchor.querySelector('.vp-blog-facet__name') ?? anchor).textContent?.trim() ?? '';
+}
+
+function rowChips(row: HTMLElement): HTMLAnchorElement[] {
+  return [...row.querySelectorAll<HTMLAnchorElement>('.vp-blog-facet__chips a')];
+}
+
+/**
+ * Adds a long row's controls, once: a "+N more" button after its chips, in
+ * view even while a narrow screen's row is scrolled, and for a very long row, a field that narrows them. Chips also
+ * learn their place in alphabetical order, which an open row lists them in.
+ */
+function setUpRow(row: HTMLElement, labels: BlogLabels): void {
+  if (row.querySelector('.vp-blog-facet__more')) return;
+  const chips = row.querySelector<HTMLElement>('.vp-blog-facet__chips');
+  if (!chips) return;
+  const anchors = rowChips(row);
+  [...anchors]
+    .sort((a, b) => chipName(a).localeCompare(chipName(b), undefined, { sensitivity: 'base' }))
+    .forEach((anchor, position) => (anchor.dataset.vpBlogAlphabetical = String(position)));
+
+  const more = element('button', 'vp-blog-facet__more') as HTMLButtonElement;
+  more.type = 'button';
+  more.addEventListener('click', () => {
+    row.classList.toggle('is-open');
+    layoutRow(row, labels);
+  });
+  chips.after(more);
+
+  if (anchors.length <= FILTER_FIELD_MIN) return;
+  const field = document.createElement('input');
+  field.type = 'search';
+  field.className = 'vp-blog-facet__filter';
+  field.placeholder = labels.filter.replace('{row}', row.getAttribute('aria-label') ?? '');
+  field.setAttribute('aria-label', field.placeholder);
+  field.addEventListener('input', () => layoutRow(row, labels));
+  field.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !field.value) return;
+    field.value = '';
+    layoutRow(row, labels);
+  });
+  const empty = element('p', 'vp-blog-facet__empty', labels.noFilterMatches);
+  chips.prepend(field);
+  chips.append(empty);
+}
+
+/**
+ * Shows as much of a row as it should. A row with a `data-limit` shows that
+ * many chips, most used first, plus any active one, then "+N more". Open, it
+ * lists every chip alphabetically, narrowed to those matching its filter
+ * field. Rows without a limit show every chip.
+ */
+function layoutRow(row: HTMLElement, labels: BlogLabels): void {
+  const limit = Number(row.dataset.limit) || 0;
+  if (!limit) return;
+  setUpRow(row, labels);
+  const open = row.classList.contains('is-open');
+  const field = row.querySelector<HTMLInputElement>('.vp-blog-facet__filter');
+  const query = open && field ? field.value.trim().toLowerCase() : '';
+  const anchors = rowChips(row);
+  let shown = 0;
+  anchors.forEach((anchor, rank) => {
+    const visible = open
+      ? !query || chipName(anchor).toLowerCase().includes(query)
+      : rank < limit || anchor.classList.contains('is-active');
+    anchor.hidden = !visible;
+    anchor.style.order = open ? (anchor.dataset.vpBlogAlphabetical ?? '') : '';
+    if (visible) shown++;
+  });
+  const more = row.querySelector<HTMLButtonElement>('.vp-blog-facet__more')!;
+  more.hidden = !open && shown === anchors.length;
+  more.textContent = open ? labels.less : labels.more.replace('{n}', String(anchors.length - shown));
+  more.setAttribute('aria-expanded', String(open));
+  if (field) field.hidden = !open;
+  const empty = row.querySelector<HTMLElement>('.vp-blog-facet__empty');
+  if (empty) empty.hidden = !(open && shown === 0);
+}
+
 /**
  * Brings the browse panel in step with the filter. Each chip links to the
  * view with it toggled, and counts the posts it would show with the other
@@ -164,10 +254,10 @@ function markActive(anchor: HTMLAnchorElement, active: boolean): void {
  * would show nothing are dimmed. The months of the year in view show below
  * the years.
  */
-function syncBrowse(blog: HTMLElement, url: URL, filter: BlogFilter, markers: Element[]): void {
+function syncBrowse(blog: HTMLElement, url: URL, filter: BlogFilter, markers: Element[], labels: BlogLabels): void {
   const browse = blog.querySelector<HTMLElement>('.vp-blog-browse');
   if (!browse) return;
-  for (const anchor of browse.querySelectorAll<HTMLAnchorElement>('.vp-blog-facet a')) {
+  for (const anchor of browse.querySelectorAll<HTMLAnchorElement>('.vp-blog-facet__chips a')) {
     const link = readFilterLink(anchor);
     if (!link) continue;
     const active = isActive(link, filter);
@@ -181,6 +271,12 @@ function syncBrowse(blog: HTMLElement, url: URL, filter: BlogFilter, markers: El
   // With only one year, its months always show.
   const months = [...browse.querySelectorAll<HTMLElement>('[data-vp-blog-facet="month"]')];
   for (const row of months) row.hidden = months.length > 1 && row.dataset.year !== filter.date.slice(0, 4);
+  for (const row of browse.querySelectorAll<HTMLElement>('.vp-blog-facet')) {
+    layoutRow(row, labels);
+    // On narrow screens a row is one line that scrolls sideways; its end fades while there is more.
+    const chips = row.querySelector<HTMLElement>('.vp-blog-facet__chips');
+    if (chips) row.classList.toggle('is-scrollable', chips.scrollWidth > chips.clientWidth + 1);
+  }
 }
 
 /** The name a filter value is shown with: as a chip or card link spells it, else as the URL gave it. */
@@ -356,7 +452,7 @@ export function applyBlogView(blog: HTMLElement, url: URL): BlogViewState {
   if (banner) renderFilter(banner, blog, url, filter, pinned.length + rest.length, labels);
   const pagination = blog.querySelector<HTMLElement>('[data-vp-blog-pagination]');
   if (pagination) renderPagination(pagination, url, filter, page, pageCount, labels);
-  syncBrowse(blog, url, filter, markers);
+  syncBrowse(blog, url, filter, markers, labels);
   markCardLinks(blog, filter);
 
   return { ...filter, page, pageCount };

@@ -76,7 +76,7 @@ export interface BlogOptions {
    * on a site with a site URL (without one, no feeds are written). Default: `true`.
    */
   rssLink?: boolean;
-  /** Words the plugin writes on pages, for translating. `{n}`, `{blog}` and `{filter}` are filled in. */
+  /** Words the plugin writes on pages, for translating. `{n}`, `{blog}`, `{filter}` and `{row}` are filled in. */
   labels?: Partial<BlogLabels>;
 }
 
@@ -131,6 +131,14 @@ export interface BlogLabels {
   removeFilter: string;
   /** Link that clears every filter. */
   showAll: string;
+  /** Button that shows the rest of a browse row: "+{n} more". */
+  more: string;
+  /** Button that shows a browse row's first values again. */
+  less: string;
+  /** Accessible name of the field that narrows a long browse row: "Filter {row}". */
+  filter: string;
+  /** When nothing in a browse row matches the filter field. */
+  noFilterMatches: string;
   previous: string;
   next: string;
   /** Accessible name of the page links. */
@@ -169,6 +177,10 @@ export const DEFAULT_LABELS: BlogLabels = {
   noMatches: 'No posts match these filters.',
   removeFilter: 'Remove filter: {filter}',
   showAll: 'Show all posts',
+  more: '+{n} more',
+  less: 'Show fewer',
+  filter: 'Filter {row}',
+  noFilterMatches: 'Nothing matches.',
   previous: 'Previous',
   next: 'Next',
   pages: 'Pages',
@@ -210,8 +222,14 @@ export interface BlogIndexConfig {
   showCategory: boolean;
   /** List every category above the posts, each one a filter. */
   categoryList: boolean;
+  /** Categories shown before "+N more", most used first. `0` shows them all. */
+  categoryLimit: number;
   /** List every keyword above the posts, each one a filter. */
   tagList: boolean;
+  /** Keywords shown before "+N more", most used first. `0` shows them all. */
+  tagLimit: number;
+  /** Leave keywords used by fewer posts than this out of the browse panel. They still show on cards. */
+  tagMinCount: number;
   /** List the years and months that have posts above the posts, each one a filter. */
   archive: boolean;
   /** Posts per page. `0` shows them all on one page. */

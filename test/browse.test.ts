@@ -101,9 +101,13 @@ describe('the browse panel', () => {
     site.write('solo/index.md', frontmatter(['blog-index: true'], '# Solo\n'));
     site.write('solo/a.md', frontmatter(['blog:', '  date: 2026-01-05'], '# a\n'));
     site.write('solo/b.md', frontmatter(['blog:', '  date: 2026-02-05'], '# b\n'));
-    const months = row(site.render('solo/index.md'), 'month', '2026');
+    const page = site.render('solo/index.md');
+    const months = row(page, 'month', '2026');
     expect(months).toContain('Jan');
     expect(months).not.toContain(' hidden>');
+    // Choosing the only year would narrow nothing, so there is no year row, and the months take the label.
+    expect(page).not.toContain('data-vp-blog-facet="year"');
+    expect(months).toContain('<span class="vp-blog-facet__label" aria-hidden="true">Archive</span>');
   });
 
   it('leaves the archive out when every post is from the same month, and the panel when there is nothing to browse', () => {
@@ -124,6 +128,82 @@ describe('the browse panel', () => {
     expect(page).not.toContain('data-vp-blog-facet="category"');
     expect(page).not.toContain('data-vp-blog-facet="year"');
     expect(page).toContain('data-vp-blog-facet="tag"');
+  });
+});
+
+describe('rows that would not narrow the posts', () => {
+  it('are left out: one category on every post, or one keyword on every post', () => {
+    site.write('same/index.md', frontmatter(['blog-index: true'], '# Same\n'));
+    site.write(
+      'same/a.md',
+      frontmatter(['blog:', '  date: 2026-01-05', '  category: Releases', '  tags: [x]'], '# a\n'),
+    );
+    site.write(
+      'same/b.md',
+      frontmatter(['blog:', '  date: 2026-02-05', '  category: Releases', '  tags: [x]'], '# b\n'),
+    );
+    const page = site.render('same/index.md');
+    expect(page).not.toContain('data-vp-blog-facet="category"');
+    expect(page).not.toContain('data-vp-blog-facet="tag"');
+    expect(page).toContain('data-vp-blog-facet="month"');
+  });
+
+  it('stay when the one value is on only some posts, since choosing it still narrows them', () => {
+    site.write('some/index.md', frontmatter(['blog-index: true'], '# Some\n'));
+    site.write('some/a.md', frontmatter(['blog:', '  date: 2026-01-05', '  category: Releases'], '# a\n'));
+    site.write('some/b.md', frontmatter(['blog:', '  date: 2026-01-06'], '# b\n'));
+    expect(row(site.render('some/index.md'), 'category')).toContain('Releases');
+  });
+});
+
+describe('long rows', () => {
+  beforeAll(() => {
+    site.write('many/index.md', frontmatter(['blog-index:', '  tagLimit: 3', '  tagMinCount: 2'], '# Many\n'));
+    // zeta on 3 posts, beta on 2, the rest on 1 or 2.
+    const tags = [['zeta', 'beta', 'alpha'], ['zeta', 'beta', 'gamma'], ['zeta', 'delta', 'gamma'], ['solo']];
+    tags.forEach((list, at) =>
+      site.write(
+        `many/p${at}.md`,
+        frontmatter(['blog:', `  date: 2026-0${at + 1}-01`, `  tags: [${list}]`], `# p${at}\n`),
+      ),
+    );
+  });
+
+  it('list chips most used first, then alphabetically', () => {
+    const names = [...row(site.render('many/index.md'), 'tag').matchAll(/facet__name">([^<]+)</g)].map((m) => m[1]);
+    expect(names).toEqual(['zeta', 'beta', 'gamma']);
+  });
+
+  it('leave out keywords used by fewer than tagMinCount posts', () => {
+    const tags = row(site.render('many/index.md'), 'tag');
+    expect(tags).not.toContain('>alpha<');
+    expect(tags).not.toContain('>solo<');
+  });
+
+  it('carry their limit only when they have more chips than it', () => {
+    site.write('many/index.md', frontmatter(['blog-index:', '  tagLimit: 2'], '# Many\n'));
+    expect(row(site.render('many/index.md'), 'tag')).toContain('data-limit="2"');
+    site.write('many/index.md', frontmatter(['blog-index:', '  tagLimit: 0'], '# Many\n'));
+    expect(row(site.render('many/index.md'), 'tag')).not.toContain('data-limit');
+    expect(row(html(), 'tag')).not.toContain('data-limit');
+  });
+});
+
+describe('the Subscribe link', () => {
+  it('sits at the end of the first row of the panel', () => {
+    const page = site.render('news/index.md', { siteUrl: 'https://example.com' });
+    const first = row(page, 'category');
+    expect(first).toContain('<div class="vp-blog-facet__aside">');
+    expect(first).toContain('vp-blog-rss');
+    expect(page).not.toContain('vp-blog-subscribe');
+  });
+
+  it('has a line of its own when there is no panel', () => {
+    site.write('bare/index.md', frontmatter(['blog-index: true'], '# Bare\n'));
+    site.write('bare/a.md', frontmatter(['blog:', '  date: 2026-01-05'], '# a\n'));
+    const page = site.render('bare/index.md', { siteUrl: 'https://example.com' });
+    expect(page).not.toContain('vp-blog-browse');
+    expect(page).toContain('<div class="vp-blog-subscribe">');
   });
 });
 

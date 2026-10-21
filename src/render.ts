@@ -65,7 +65,8 @@ export function renderRssLink(index: IndexPage, context: RenderContext, show: bo
   if (!show || !context.feeds || !index.index.feed) return '';
   const title = fill(context.labels.rssFeed, { blog: index.title }).replace(/"/g, '&quot;');
   const url = toMarkdownUrl(`/${toFeedPath(index)}`);
-  return `<span class="vp-blog-rss">[${RSS_ICON} ${escapeMarkdown(context.labels.subscribe)}](${url} "${title}")</span>`;
+  const text = `<span class="vp-blog-rss__text">${escapeMarkdown(context.labels.subscribe)}</span>`;
+  return `<span class="vp-blog-rss">[${RSS_ICON} ${text}](${url} "${title}")</span>`;
 }
 
 function fill(template: string, values: Record<string, string>): string {
@@ -365,73 +366,118 @@ function renderChip(name: string, count: number, url: string, title = ''): strin
   );
 }
 
-/** One row of the browse panel: a label, then its chips. `attributes` are added to the row. */
-function renderFacet(facet: FilterParam, label: string, chips: string[], ariaLabel = label, attributes = ''): string[] {
+interface FacetRow {
+  facet: FilterParam;
+  label: string;
+  chips: string[];
+  /** The row's name for screen readers, when it isn't `label`. */
+  ariaLabel?: string;
+  /** How many chips show before "+N more". `0` shows them all. */
+  limit?: number;
+  /** Added to the row's opening tag. */
+  attributes?: string;
+  /** Markdown beside the chips, at the end of the row: the first row holds the "Subscribe" link. */
+  aside?: string;
+}
+
+/**
+ * One row of the browse panel: a label, its chips, and anything beside them.
+ * The client shows the first `limit` chips and a "+N more" button for the
+ * rest; without it, every chip shows.
+ */
+function renderFacet(row: FacetRow): string[] {
+  const { facet, label, chips, ariaLabel = label, limit = 0, attributes = '', aside = '' } = row;
+  const limited = limit && chips.length > limit ? ` data-limit="${limit}"` : '';
   return [
-    `<div class="vp-blog-facet vp-blog-facet--${facet}" role="group" aria-label="${escapeHtml(ariaLabel)}" data-vp-blog-facet="${facet}"${attributes}>`,
+    `<div class="vp-blog-facet vp-blog-facet--${facet}" role="group" aria-label="${escapeHtml(ariaLabel)}" data-vp-blog-facet="${facet}"${limited}${attributes}>`,
     `<span class="vp-blog-facet__label" aria-hidden="true">${escapeTemplateText(label)}</span>`,
     '<div class="vp-blog-facet__chips">',
     '',
     chips.join(' '),
     '',
     '</div>',
+    ...block('vp-blog-facet__aside', aside),
     '</div>',
   ];
+}
+
+/** Whether choosing one of `values` would narrow `total` posts: a single value on every post would not. */
+function canNarrow(values: FacetCount[], total: number): boolean {
+  return values.length > 1 || (values.length === 1 && values[0].count < total);
+}
+
+/** Most used first, then alphabetically: the order a row's first chips are chosen in. */
+function byUse(a: FacetCount, b: FacetCount): number {
+  return b.count - a.count || a.value.localeCompare(b.value, undefined, { sensitivity: 'base' });
 }
 
 /**
  * The browse panel above a blog page's posts: a row of categories, a row of
  * keywords, and an archive of years, each chip a filter with its post count.
  * Below the years, one row of months per year, which the client shows for the
- * year being viewed (always, when there is only one year). The archive is left
- * out when every dated post is in the same month: it would have nothing to choose.
+ * year being viewed. A row is left out when it can't narrow the posts, such
+ * as one category that every post is in; with only one year, the archive is
+ * just that year's months. Categories and keywords come most used first, so
+ * the first `categoryLimit` and `tagLimit` of them are the ones that show
+ * before "+N more". The "Subscribe" link sits at the end of the first row.
  */
 function renderBrowse(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
   const { labels } = context;
   const { locale, timeZone } = context.dates;
+  const { categoryList, categoryLimit, tagList, tagLimit, tagMinCount, archive: showArchive } = index.index;
   const blog = index.routePath;
-  const rows: string[] = [];
+  const rows: FacetRow[] = [];
 
-  const categories = index.index.categoryList ? collectCategories(posts) : [];
-  if (categories.length) {
+  const categories = categoryList ? collectCategories(posts).sort(byUse) : [];
+  if (canNarrow(categories, posts.length)) {
     const chips = categories.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'category', value)));
-    rows.push(...renderFacet('category', labels.categories, chips));
+    rows.push({ facet: 'category', label: labels.categories, chips, limit: categoryLimit });
   }
 
-  const tags = index.index.tagList ? collectTags(posts) : [];
-  if (tags.length) {
-    const chips = tags.map(({ tag, count }) => renderChip(tag, count, toFilterUrl(blog, 'tag', tag)));
-    rows.push(...renderFacet('tag', labels.tags, chips));
+  const tags = tagList
+    ? collectTags(posts)
+        .map(({ tag, count }) => ({ value: tag, count }))
+        .filter(({ count }) => count >= tagMinCount)
+        .sort(byUse)
+    : [];
+  if (canNarrow(tags, posts.length)) {
+    const chips = tags.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'tag', value)));
+    rows.push({ facet: 'tag', label: labels.tags, chips, limit: tagLimit });
   }
 
-  const archive = index.index.archive ? collectArchive(posts, timeZone) : [];
-  if (archive.reduce((months, year) => months + year.months.length, 0) > 1) {
+  const archive = showArchive ? collectArchive(posts, timeZone) : [];
+  const monthChips = (months: FacetCount[]) =>
+    months.map(({ value, count }) =>
+      renderChip(
+        formatMonth(value, locale, { month: 'short' }),
+        count,
+        toFilterUrl(blog, 'month', value),
+        formatMonth(value, locale, { month: 'long', year: 'numeric' }),
+      ),
+    );
+  if (archive.length === 1 && canNarrow(archive[0].months, posts.length)) {
+    // One year: choosing it would narrow nothing, so the archive is its months.
+    const [year] = archive;
+    const ariaLabel = `${labels.archive} ${year.value}`;
+    const attributes = ` data-year="${year.value}"`;
+    rows.push({ facet: 'month', label: labels.archive, chips: monthChips(year.months), ariaLabel, attributes });
+  } else if (archive.length > 1) {
     const years = archive.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'year', value)));
-    rows.push(...renderFacet('year', labels.archive, years));
+    rows.push({ facet: 'year', label: labels.archive, chips: years });
     for (const year of archive) {
-      const months = year.months.map(({ value, count }) =>
-        renderChip(
-          formatMonth(value, locale, { month: 'short' }),
-          count,
-          toFilterUrl(blog, 'month', value),
-          formatMonth(value, locale, { month: 'long', year: 'numeric' }),
-        ),
-      );
-      const shown = archive.length === 1 ? '' : ' hidden';
-      rows.push(
-        ...renderFacet(
-          'month',
-          year.value,
-          months,
-          `${labels.archive} ${year.value}`,
-          ` data-year="${year.value}"${shown}`,
-        ),
-      );
+      const ariaLabel = `${labels.archive} ${year.value}`;
+      const attributes = ` data-year="${year.value}" hidden`;
+      rows.push({ facet: 'month', label: year.value, chips: monthChips(year.months), ariaLabel, attributes });
     }
   }
 
   if (rows.length === 0) return [];
-  return [`<nav class="vp-blog-browse" aria-label="${escapeHtml(labels.browse)}">`, ...rows, '</nav>'];
+  rows[0].aside = renderRssLink(index, context);
+  return [
+    `<nav class="vp-blog-browse" aria-label="${escapeHtml(labels.browse)}">`,
+    ...rows.flatMap(renderFacet),
+    '</nav>',
+  ];
 }
 
 /** Labels the client needs, as data attributes, so they are translated in one place. */
@@ -452,6 +498,10 @@ function renderClientAttributes(index: IndexPage, context: RenderContext): strin
     'data-label-post-count-one': labels.postCountOne,
     'data-label-no-matches': labels.noMatches,
     'data-label-remove-filter': labels.removeFilter,
+    'data-label-more': labels.more,
+    'data-label-less': labels.less,
+    'data-label-filter': labels.filter,
+    'data-label-no-filter-matches': labels.noFilterMatches,
   };
   return Object.entries(attributes)
     .map(([name, value]) => `${name}="${escapeHtml(value)}"`)
@@ -468,10 +518,11 @@ function renderClientAttributes(index: IndexPage, context: RenderContext): strin
 export function renderPostList(pinned: PostPage[], rest: PostPage[], index: IndexPage, context: RenderContext): string {
   const all = [...pinned, ...rest];
   if (all.length === 0) return `<p class="vp-blog-empty">${escapeTemplateText(context.labels.noPosts)}</p>\n`;
+  // The "Subscribe" link goes in the browse panel's first row, or on its own line when there is no panel.
+  const browse = renderBrowse(all, index, context);
   const lines = [
     `<div class="vp-blog" data-vp-blog ${renderClientAttributes(index, context)}>`,
-    ...block('vp-blog-subscribe', renderRssLink(index, context)),
-    ...renderBrowse(all, index, context),
+    ...(browse.length ? browse : block('vp-blog-subscribe', renderRssLink(index, context))),
     '<div class="vp-blog-filter" data-vp-blog-filter role="status" hidden></div>',
   ];
   if (pinned.length)

@@ -24,6 +24,10 @@ const HEADING_1 = /^ {0,3}#[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/m;
 // form, as `@binarynoir/vitepress-markdown-tags` writes them.
 const TAG_SYNTAX = /\(\(<?tag([|/])[^|/)\r\n]*(?:\1[^|/)\r\n]*){0,2}\)\)/g;
 const MAX_SUMMARY_LENGTH = 200;
+/** How many categories a browse row shows before "+N more": fewer than keywords, as their names run longer. */
+const DEFAULT_CATEGORY_LIMIT = 8;
+/** How many keywords a browse row shows before "+N more". */
+const DEFAULT_TAG_LIMIT = 12;
 
 /**
  * Splits a Markdown file into its YAML frontmatter and the content after it.
@@ -284,7 +288,10 @@ export function resolveIndexConfig(
     showTags: options.showTags !== false,
     showCategory: options.showCategory !== false,
     categoryList: options.categoryList !== false,
+    categoryLimit: toCount(options.categoryLimit, DEFAULT_CATEGORY_LIMIT),
     tagList: options.tagList !== false,
+    tagLimit: toCount(options.tagLimit, DEFAULT_TAG_LIMIT),
+    tagMinCount: toCount(options.tagMinCount, 1),
     archive: options.archive !== false,
     pageSize: toCount(options.pageSize, toCount(defaults.pageSize, 10)),
     pinLimit: toCount(options.pinLimit ?? options.stickyLimit, toCount(defaults.pinLimit ?? defaults.stickyLimit, 0)),

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.5.0] - 2026-10-21
+
+### Added
+
+- `categoryLimit` (default `8`) and `tagLimit` (default `12`) on blog pages: a browse row shows its most used values, then "+N more", which opens the full list alphabetically. A row of more than 30 values gets a field to narrow it when open
+- `tagMinCount` on blog pages: keywords used by fewer posts are left out of the browse panel, though they still show on cards
+- `more`, `less`, `filter` and `noFilterMatches` labels
+
+### Changed
+
+- The browse panel is a flat toolbar between two rules instead of a card, so it no longer looks like a post. `--vp-blog-browse-bg` is now `transparent`
+- On screens narrower than 640px, each browse row is one line that scrolls sideways, so the panel stays short however many values it has
+- Categories and keywords in the browse panel are ranked by how many posts use them, not alphabetically
+- Rows that can't narrow the posts are left out, such as a single category that every post is in. With only one year, the archive shows that year's months without a row of years
+- The "Subscribe" link sits at the end of the browse panel's first row (its icon alone on narrow screens), and only has a line of its own on a blog page without a panel
+- Category and keyword chips are at least 24px high, and 32px on touch screens
+
 ## [0.4.0] - 2026-10-20
 
 ### Added

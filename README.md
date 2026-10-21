@@ -267,24 +267,27 @@ Notes from Team A.
 
 The list goes where `<!-- blog-posts -->` is, or after the page's content.
 
-| Key            | Default                       | What it does                                                                                    |
-| -------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `scope`        | `section`                     | `site` makes this the main blog. See [Scopes](#scopes).                                         |
-| `folders`      | the page's folder             | Folders to list posts from, relative to the source directory; `./` and `../` are page-relative. |
-| `tags`         | all                           | Only list posts with at least one of these tags.                                                |
-| `categories`   | all                           | Only list posts in one of these categories.                                                     |
-| `limit`        | all                           | Most posts to list. The feed has its own limit.                                                 |
-| `layout`       | `list`                        | `list` (image beside text), `grid` (cards) or `compact` (dates and titles).                     |
-| `groupBy`      | none                          | `year` or `month` puts a heading ("2026", "October 2026") above each year's or month's posts.   |
-| `showTags`     | `true`                        | `false` hides tag chips on cards.                                                               |
-| `showCategory` | `true`                        | `false` hides the category above each card's title.                                             |
-| `categoryList` | `true`                        | A row of categories in the browse panel, each with its count. `false` leaves it out.            |
-| `tagList`      | `true`                        | A row of keywords in the browse panel, each with its count. `false` leaves it out.              |
-| `archive`      | `true`                        | Rows of years, and each year's months, in the browse panel. `false` leaves them out.            |
-| `pageSize`     | `10` (the `pageSize` option)  | Posts per page. `0` shows them all on one page.                                                 |
-| `pinLimit`     | all (the `pinLimit` option)   | Most pinned posts kept at the top. Extra ones take their place by date.                         |
-| `rssLink`      | `true` (the `rssLink` option) | A "Subscribe" link with the RSS icon to this blog's feed. `false` leaves it out.                |
-| `feed`         | on                            | `false` turns the feed off, or `{ title, description, limit, path }` to set it up.              |
+| Key             | Default                       | What it does                                                                                    |
+| --------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `scope`         | `section`                     | `site` makes this the main blog. See [Scopes](#scopes).                                         |
+| `folders`       | the page's folder             | Folders to list posts from, relative to the source directory; `./` and `../` are page-relative. |
+| `tags`          | all                           | Only list posts with at least one of these tags.                                                |
+| `categories`    | all                           | Only list posts in one of these categories.                                                     |
+| `limit`         | all                           | Most posts to list. The feed has its own limit.                                                 |
+| `layout`        | `list`                        | `list` (image beside text), `grid` (cards) or `compact` (dates and titles).                     |
+| `groupBy`       | none                          | `year` or `month` puts a heading ("2026", "October 2026") above each year's or month's posts.   |
+| `showTags`      | `true`                        | `false` hides tag chips on cards.                                                               |
+| `showCategory`  | `true`                        | `false` hides the category above each card's title.                                             |
+| `categoryList`  | `true`                        | A row of categories in the browse panel, each with its count. `false` leaves it out.            |
+| `categoryLimit` | `8`                           | Categories shown before "+N more", most used first. `0` shows them all.                         |
+| `tagList`       | `true`                        | A row of keywords in the browse panel, each with its count. `false` leaves it out.              |
+| `tagLimit`      | `12`                          | Keywords shown before "+N more", most used first. `0` shows them all.                           |
+| `tagMinCount`   | `1`                           | Leave keywords used by fewer posts out of the browse panel. They still show on cards.           |
+| `archive`       | `true`                        | Rows of years, and each year's months, in the browse panel. `false` leaves them out.            |
+| `pageSize`      | `10` (the `pageSize` option)  | Posts per page. `0` shows them all on one page.                                                 |
+| `pinLimit`      | all (the `pinLimit` option)   | Most pinned posts kept at the top. Extra ones take their place by date.                         |
+| `rssLink`       | `true` (the `rssLink` option) | A "Subscribe" link with the RSS icon to this blog's feed. `false` leaves it out.                |
+| `feed`          | on                            | `false` turns the feed off, or `{ title, description, limit, path }` to set it up.              |
 
 ### Pinned posts
 
@@ -328,7 +331,8 @@ Filters combine: `?category=engineering&tag=api&year=2026` shows the
 engineering posts tagged `api` from 2026. Pages count the matching posts only.
 
 **The browse panel** above the posts has a row each for categories, keywords
-and the archive, each chip with its post count:
+and the archive, each chip with its post count. It is a flat toolbar between
+two rules, with the blog's "Subscribe" link at the end of its first row.
 
 - **Chips combine.** A chip adds its filter to the ones in view; another chip
   in the same row replaces it, and clicking the active chip takes it off again.
@@ -338,8 +342,18 @@ and the archive, each chip with its post count:
 - **Years open into months.** Choosing a year shows a row of its months below
   the years (with only one year, its months always show). A month keeps its
   year active, and clicking it again steps back out to the whole year.
-- Rows only appear when they have something to choose: no categories means no
-  category row, and the archive needs posts from more than one month.
+- **It stays short with many values.** Categories and keywords are ranked by
+  how many posts use them, and a row shows its first `categoryLimit` (8) or
+  `tagLimit` (12), then "+N more". That opens the full list alphabetically,
+  and a row of more than 30 values also gets a field to narrow it. An active
+  chip always shows. `tagMinCount: 2` leaves out keywords used only once.
+- **One line per row on phones.** On screens narrower than 640px, each row is
+  a single line that scrolls sideways, its end fading while there is more.
+  Chips are 32px high on touch screens.
+- **Rows only appear when they can narrow the posts.** No categories, or one
+  category that every post is in, means no category row. The archive needs
+  posts from more than one month, and with only one year, it is that year's
+  months alone.
 
 **The active filters** show above the posts while any filter is on: how many
 posts match ("4 posts", or "No posts match these filters."), a chip for each
@@ -552,6 +566,10 @@ withBlog(config, {
     noMatches: 'Keine Beiträge für diese Filter.',
     removeFilter: 'Filter entfernen: {filter}',
     showAll: 'Alle Beiträge zeigen',
+    more: '+{n} weitere',
+    less: 'Weniger zeigen',
+    filter: '{row} filtern',
+    noFilterMatches: 'Keine Treffer.',
     previous: 'Zurück',
     next: 'Weiter',
     pages: 'Seiten',
@@ -575,7 +593,7 @@ mode. Override these to restyle it without new rules:
 | `--vp-blog-tag-bg`              | `var(--vp-c-default-soft)`    |
 | `--vp-blog-tag-color`           | `var(--vp-c-text-2)`          |
 | `--vp-blog-accent`              | `var(--vp-c-brand-1)`         |
-| `--vp-blog-browse-bg`           | `var(--vp-c-bg-soft)`         |
+| `--vp-blog-browse-bg`           | `transparent`                 |
 | `--vp-blog-facet-label-width`   | `6.5rem`                      |
 | `--vp-blog-announcement-height` | `40px`                        |
 | `--vp-blog-announcement-bg`     | `var(--vp-button-brand-bg)`   |
