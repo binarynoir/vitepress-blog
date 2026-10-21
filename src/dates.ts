@@ -145,3 +145,15 @@ export function toDateTimeAttribute({ date, hasTime }: PostDate, timeZone: strin
 export function yearIn(date: Date, timeZone: string): number {
   return Number(toZonedIsoDate(date, timeZone).slice(0, 4));
 }
+
+/** The month a date falls in, in `timeZone`, as `YYYY-MM`: what month headings and `?month=` use. */
+export function monthIn(date: Date, timeZone: string): string {
+  return toZonedIsoDate(date, timeZone).slice(0, 7);
+}
+
+/** A `YYYY-MM` month for readers, in `locale`: "October 2026", or with `{ month: 'short' }`, "Oct". */
+export function formatMonth(month: string, locale: string, format: Intl.DateTimeFormatOptions): string {
+  const [year, number] = month.split('-').map(Number);
+  // The first of the month at noon UTC, shown in UTC, is that month in every locale.
+  return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...format }).format(Date.UTC(year, number - 1, 1, 12));
+}

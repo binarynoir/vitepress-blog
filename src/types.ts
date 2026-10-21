@@ -63,10 +63,12 @@ export interface BlogOptions {
    */
   pageSize?: number;
   /**
-   * Most sticky posts pinned to the top of a blog page, for those that don't
-   * set `stickyLimit`. Extra sticky posts take their place by date. `0` pins
-   * them all. Default: `0`.
+   * Most `pinned: true` posts kept at the top of a blog page, for those that
+   * don't set `pinLimit`. Extra pinned posts take their place by date. `0`
+   * pins them all. Default: `0`.
    */
+  pinLimit?: number;
+  /** @deprecated Renamed `pinLimit`; still read when `pinLimit` isn't set. */
   stickyLimit?: number;
   /**
    * Show a "Subscribe" RSS link on blog pages and `::: blog-posts` blocks,
@@ -74,7 +76,7 @@ export interface BlogOptions {
    * on a site with a site URL (without one, no feeds are written). Default: `true`.
    */
   rssLink?: boolean;
-  /** Words the plugin writes on pages, for translating. `{n}`, `{blog}` and `{tag}` are filled in. */
+  /** Words the plugin writes on pages, for translating. `{n}`, `{blog}` and `{filter}` are filled in. */
   labels?: Partial<BlogLabels>;
 }
 
@@ -94,29 +96,41 @@ export interface BlogLabels {
   /** The link back to a post's blog: "All posts in {blog}". */
   allPosts: string;
   draft: string;
-  /** Badge on a sticky post. */
-  sticky: string;
+  /** Badge on a pinned post. */
+  pinned: string;
   /** Badge on an announcement, and the accessible name of the announcement banner. */
   announcement: string;
-  /** Above a blog page filtered to announcements (`?announcements`). */
+  /** A blog page's announcements filter (`?announcements`), in the active filters. */
   announcements: string;
-  /** When the blog page has no announcements to show. */
-  noAnnouncements: string;
   /** Tooltip of the banner's count badge: "{n} announcements". */
   announcementCount: string;
   /** Accessible name of the banner's close button. */
   dismiss: string;
   noPosts: string;
-  /** Year heading for posts without a date, when a blog groups by year. */
+  /** Group heading for posts without a date, when a blog groups by year or month. */
   undated: string;
-  /** Label of a blog page's keyword list. */
+  /** Accessible name of the browse panel above a blog page's posts. */
+  browse: string;
+  /** Label of the browse panel's category row. */
+  categories: string;
+  /** Label of the browse panel's keyword row. */
   tags: string;
-  /** Above a list filtered by keyword: "Posts tagged {tag}". */
-  tagged: string;
-  /** Link that clears the keyword filter. */
+  /** Label of the browse panel's year row. */
+  archive: string;
+  /** Names a category filter among the active filters: "Category". */
+  category: string;
+  /** Names a keyword filter among the active filters: "Keyword". */
+  tag: string;
+  /** How many posts the active filters match: "{n} posts". */
+  postCount: string;
+  /** The same, for one post: "{n} post". */
+  postCountOne: string;
+  /** When no post matches the active filters. */
+  noMatches: string;
+  /** Accessible name of an active filter's remove link: "Remove filter: {filter}". */
+  removeFilter: string;
+  /** Link that clears every filter. */
   showAll: string;
-  /** When no post has the keyword: "No posts tagged {tag}." */
-  noTagged: string;
   previous: string;
   next: string;
   /** Accessible name of the page links. */
@@ -137,18 +151,24 @@ export const DEFAULT_LABELS: BlogLabels = {
   older: 'Older post',
   allPosts: 'All posts in {blog}',
   draft: 'Draft',
-  sticky: 'Pinned',
+  pinned: 'Pinned',
   announcement: 'Announcement',
   announcements: 'Announcements',
-  noAnnouncements: 'No announcements.',
   announcementCount: '{n} announcements',
   dismiss: 'Dismiss',
   noPosts: 'No posts yet.',
   undated: 'Undated',
+  browse: 'Browse posts',
+  categories: 'Categories',
   tags: 'Keywords',
-  tagged: 'Posts tagged {tag}',
+  archive: 'Archive',
+  category: 'Category',
+  tag: 'Keyword',
+  postCount: '{n} posts',
+  postCountOne: '{n} post',
+  noMatches: 'No posts match these filters.',
+  removeFilter: 'Remove filter: {filter}',
   showAll: 'Show all posts',
-  noTagged: 'No posts tagged {tag}.',
   previous: 'Previous',
   next: 'Next',
   pages: 'Pages',
@@ -158,6 +178,8 @@ export const DEFAULT_LABELS: BlogLabels = {
 
 export type BlogScope = 'site' | 'section';
 export type BlogLayout = 'list' | 'grid' | 'compact';
+/** How a blog page groups its posts under headings: by year, by month, or not at all (`''`). */
+export type BlogGroupBy = 'year' | 'month' | '';
 
 export interface BlogFeedConfig {
   title?: string;
@@ -175,19 +197,27 @@ export interface BlogIndexConfig {
   folders: string[];
   /** Only list posts with at least one of these tags. */
   tags: string[];
+  /** Only list posts in one of these categories. */
+  categories: string[];
   /** Most posts to list. `0` lists them all. */
   limit: number;
   layout: BlogLayout;
-  /** Put a year heading above each year's posts. */
-  groupByYear: boolean;
+  /** Put a heading above each year's or month's posts. */
+  groupBy: BlogGroupBy;
   /** Show the post's tags on each card. */
   showTags: boolean;
+  /** Show the post's category above its title on each card. */
+  showCategory: boolean;
+  /** List every category above the posts, each one a filter. */
+  categoryList: boolean;
   /** List every keyword above the posts, each one a filter. */
   tagList: boolean;
+  /** List the years and months that have posts above the posts, each one a filter. */
+  archive: boolean;
   /** Posts per page. `0` shows them all on one page. */
   pageSize: number;
-  /** Most sticky posts pinned to the top. `0` pins them all. */
-  stickyLimit: number;
+  /** Most pinned posts kept at the top. `0` pins them all. */
+  pinLimit: number;
   /** Show a "Subscribe" link to the blog's feed. */
   rssLink: boolean;
   feed: BlogFeedConfig | null;
@@ -216,7 +246,7 @@ export interface BlogPostData {
   tags: string[];
   category: string;
   scope: BlogScope;
-  sticky: boolean;
+  pinned: boolean;
   draft: boolean;
   /** Shown in the announcement banner above the nav bar. */
   announcement: boolean;

@@ -15,13 +15,13 @@ beforeAll(() => {
     .write('index.md', '# Home\n')
     .write(
       'blog/index.md',
-      frontmatter(['title: Blog', 'blog-index:', '  scope: site', '  folders: ./', '  stickyLimit: 2'], '# Blog\n'),
+      frontmatter(['title: Blog', 'blog-index:', '  scope: site', '  folders: ./', '  pinLimit: 2'], '# Blog\n'),
     )
     .write(
       'blog/one.md',
-      frontmatter(['blog:', '  date: 2026-01-01', '  sticky: true', '  tags: [release]'], '# One\n'),
+      frontmatter(['blog:', '  date: 2026-01-01', '  pinned: true', '  tags: [release]'], '# One\n'),
     )
-    .write('blog/two.md', frontmatter(['blog:', '  date: 2026-02-01', '  sticky: true'], '# Two\n'))
+    .write('blog/two.md', frontmatter(['blog:', '  date: 2026-02-01', '  pinned: true'], '# Two\n'))
     .write('blog/three.md', frontmatter(['blog:', '  date: 2026-03-01', '  tags: [release]'], '# Three\n'))
     .write('blog/four.md', frontmatter(['blog:', '  date: 2026-04-01'], '# Four\n'))
     .write('team/index.md', frontmatter(['title: Team blog', 'blog-index:', '  layout: compact'], '# Team\n'))
@@ -63,28 +63,33 @@ describe('settings', () => {
     expect(resolveWidgetConfig('').config).toEqual({
       blog: '',
       limit: 5,
-      stickyLimit: undefined,
+      pinLimit: undefined,
       layout: undefined,
       showTags: undefined,
+      showCategory: undefined,
       tags: [],
+      categories: [],
       more: '',
     });
   });
 
   it('reads every setting', () => {
     const { config } = resolveWidgetConfig(
-      'blog: /blog/\nlimit: 2\nstickyLimit: 0\nlayout: grid\nshowTags: false\ntags: [release]\nmore: Read more\n',
+      'blog: /blog/\nlimit: 2\npinLimit: 0\nlayout: grid\nshowTags: false\nshowCategory: false\ntags: [release]\ncategories: News\nmore: Read more\n',
     );
     expect(config).toEqual({
       blog: '/blog/',
       limit: 2,
-      stickyLimit: 0,
+      pinLimit: 0,
       layout: 'grid',
       showTags: false,
+      showCategory: false,
       tags: ['release'],
+      categories: ['News'],
       more: 'Read more',
     });
     expect(resolveWidgetConfig('more: false').config.more).toBeNull();
+    expect(resolveWidgetConfig('stickyLimit: 1').config.pinLimit).toBe(1);
   });
 
   it('reports YAML it cannot read', () => {
@@ -94,15 +99,15 @@ describe('settings', () => {
 
 describe('the block', () => {
   it("shows the blog's posts, pinned first, up to the block's limits, with a link to the blog", () => {
-    const html = render('index.md', `# Home\n\n${widget('limit: 3\nstickyLimit: 1\n')}`);
-    // Two is the newest sticky post; one is sticky too, but past the block's stickyLimit.
+    const html = render('index.md', `# Home\n\n${widget('limit: 3\npinLimit: 1\n')}`);
+    // Two is the newest pinned post; one is pinned too, but past the block's pinLimit.
     expect(titles(html)).toEqual(['Two', 'Four', 'Three']);
     expect(html).toContain(
       '<div class="vp-blog-widget__footer">\n<p><a href="/blog/index.md">All posts in Blog</a></p>',
     );
   });
 
-  it('defaults to the blog page stickyLimit and a limit of 5', () => {
+  it('defaults to the blog page pinLimit and a limit of 5', () => {
     const html = render('index.md', `# Home\n\n${widget('')}`);
     expect(titles(html)).toEqual(['Two', 'One', 'Four', 'Three']);
   });

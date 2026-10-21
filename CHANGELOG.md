@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-20
+
+### Added
+
+- Filtering blog pages by category (`?category=`), year (`?year=2026`) and month (`?month=2026-10`), combined with each other, with `?tag=` and with `?announcements`
+- A browse panel above a blog page's posts: rows of categories, keywords and years, each chip with its post count, and the months of the year in view. Chips combine with the filters in view, toggle off when active, and recount as filters change; chips that would show nothing are dimmed
+- Active filters above the posts: the number of matching posts, a chip to remove each filter, and "Show all posts"
+- A post's category above its title on cards and in its byline, linked to its blog filtered by it
+- `blog-index` settings `categories`, `showCategory`, `categoryList`, `archive`, and `groupBy: month`; `::: blog-posts` settings `categories` and `showCategory`
+- `browse`, `categories`, `archive`, `category`, `tag`, `postCount`, `postCountOne`, `noMatches` and `removeFilter` labels
+- `readFilter` and the `BlogFilter` type from `@binarynoir/vitepress-blog/client`, and the `BlogGroupBy` type
+
+### Changed
+
+- `sticky` is renamed `pinned`, to match its Pinned badge, and `stickyLimit` is renamed `pinLimit`, in post frontmatter, `blog-index`, `::: blog-posts` and the plugin options
+- The `sticky` label is now `pinned`, and the `vp-blog-sticky`, `vp-blog-card--sticky`, `vp-blog-badge--sticky` and `data-vp-blog-sticky` classes and attribute are now `pinned` ones
+- The keyword list is now the keyword row of the browse panel: its `vp-blog-tags` classes are now `vp-blog-facet` classes
+- The filter line above filtered posts is replaced by the active filters
+- `BlogViewState` gives `category` and `date` alongside `tag`, `announcements`, `page` and `pageCount`
+- `BlogIndexConfig` has `groupBy` (`'year'`, `'month'` or `''`) in place of `groupByYear`
+
+### Deprecated
+
+- `sticky` and `stickyLimit`: still read when `pinned` and `pinLimit` aren't set
+
+### Removed
+
+- The `tagged`, `noTagged` and `noAnnouncements` labels, replaced by the active filters' `postCount`, `postCountOne` and `noMatches`
+
 ## [0.3.0] - 2026-10-20
 
 ### Added

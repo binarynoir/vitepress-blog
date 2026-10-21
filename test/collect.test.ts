@@ -6,7 +6,7 @@ import { frontmatter, Site } from './helpers.js';
 const site = new Site();
 let pages: BlogPage[];
 
-const all = { drafts: false, stickyFirst: false, applyLimit: false };
+const all = { drafts: false, pinnedFirst: false, applyLimit: false };
 
 function blog(relativePath: string): IndexPage {
   const page = pages.find((candidate) => candidate.relativePath === relativePath);
@@ -29,7 +29,7 @@ beforeAll(() => {
     )
     .write('team-a/notes.md', frontmatter(['blog:', '  date: 2026-02-01'], '# Notes'))
     .write('team-a/deep/index.md', frontmatter(['blog-index: true'], '# Deep'))
-    .write('team-a/deep/dive.md', frontmatter(['blog:', '  date: 2026-04-01', '  sticky: true'], '# Dive'))
+    .write('team-a/deep/dive.md', frontmatter(['blog:', '  date: 2026-04-01', '  pinned: true'], '# Dive'))
     .write('team-a/wip.md', frontmatter(['blog:', '  draft: true', '  date: 2026-05-01'], '# WIP'))
     .write('loose/undated.md', frontmatter(['blog: true'], '# Undated'))
     .write('releases/index.md', frontmatter(['blog-index:', '  folders: [team-a]', '  tags: release'], '# Releases'))
@@ -77,8 +77,8 @@ describe('listBlogPosts', () => {
     expect(titles(blog('team-a/index.md'), { ...all, drafts: true })).toContain('WIP');
   });
 
-  it('pins sticky posts first when asked', () => {
-    expect(titles(blog('team-a/index.md'), { ...all, stickyFirst: true })[0]).toBe('Dive');
+  it('puts pinned posts first when asked', () => {
+    expect(titles(blog('team-a/index.md'), { ...all, pinnedFirst: true })[0]).toBe('Dive');
   });
 
   it('applies the limit only when asked', () => {

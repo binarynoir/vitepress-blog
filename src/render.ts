@@ -1,6 +1,14 @@
 import path from 'node:path';
 import type { IndexPage, PostPage } from './collect.js';
-import { formatPostDate, resolveTimeZone, toDateTimeAttribute, yearIn, type DateDisplay } from './dates.js';
+import {
+  formatMonth,
+  formatPostDate,
+  monthIn,
+  resolveTimeZone,
+  toDateTimeAttribute,
+  yearIn,
+  type DateDisplay,
+} from './dates.js';
 import { toFeedPath } from './feed.js';
 import { DEFAULT_LABELS, type BlogAuthor, type BlogLabels, type BlogOptions } from './types.js';
 import { escapeHtml, escapeMarkdown, escapeTemplateText, isExternalUrl, toMarkdownUrl, toPageLink } from './util.js';
@@ -97,31 +105,40 @@ function renderAuthors(authors: BlogAuthor[], context: RenderContext): string {
   return `${escapeMarkdown(context.labels.by)} ${names}`;
 }
 
-function renderBadge(kind: 'draft' | 'sticky' | 'announcement', context: RenderContext): string {
+function renderBadge(kind: 'draft' | 'pinned' | 'announcement', context: RenderContext): string {
   return `<span class="vp-blog-badge vp-blog-badge--${kind}">${escapeTemplateText(context.labels[kind])}</span>`;
 }
 
+/** The query parameters a blog page filters by: `?category=`, `?tag=`, `?year=2026` and `?month=2026-10`. */
+export type FilterParam = 'category' | 'tag' | 'year' | 'month';
+
 /**
- * The URL that filters a blog page by a keyword, which VitePress gives the
- * base: `/blog/?tag=release`, or `/news/archive.md?tag=release` for a page not
- * named `index.md`. An `index.md` page is linked by its folder, because
+ * The URL that filters a blog page, which VitePress gives the base:
+ * `/blog/?tag=release`, or `/news/archive.md?category=engineering` for a page
+ * not named `index.md`. An `index.md` page is linked by its folder, because
  * VitePress reads anything after `index.md` in a link as a heading anchor.
  */
-export function toTagUrl(blogRoutePath: string, tag: string): string {
-  const value = encodeURIComponent(tag.toLowerCase()).replace(/[()]/g, (c) => (c === '(' ? '%28' : '%29'));
+export function toFilterUrl(blogRoutePath: string, param: FilterParam, value: string): string {
+  const encoded = encodeURIComponent(value.toLowerCase()).replace(/[()]/g, (c) => (c === '(' ? '%28' : '%29'));
   const page = blogRoutePath.replace(/(^|\/)index\.md$/, '$1');
-  return `${toMarkdownUrl(`/${page}`)}?tag=${value}`;
+  return `${toMarkdownUrl(`/${page}`)}?${param}=${encoded}`;
+}
+
+/** The URL that filters a blog page by a keyword: `/blog/?tag=release`. See `toFilterUrl`. */
+export function toTagUrl(blogRoutePath: string, tag: string): string {
+  return toFilterUrl(blogRoutePath, 'tag', tag);
+}
+
+/** A chip: a link that filters `blogRoutePath` by `param`, or plain text without a blog. */
+function renderFilterLink(text: string, param: FilterParam, blogRoutePath: string | null, className: string): string {
+  return blogRoutePath
+    ? `[${escapeMarkdown(text)}](${toFilterUrl(blogRoutePath, param, text)})`
+    : `<span class="${className}">${escapeTemplateText(text)}</span>`;
 }
 
 /** Keyword chips: links that filter `blogRoutePath` by the keyword, or plain text without a blog. */
 function renderTags(tags: string[], blogRoutePath: string | null): string {
-  return tags
-    .map((tag) =>
-      blogRoutePath
-        ? `[${escapeMarkdown(tag)}](${toTagUrl(blogRoutePath, tag)})`
-        : `<span class="vp-blog-tag">${escapeTemplateText(tag)}</span>`,
-    )
-    .join(' ');
+  return tags.map((tag) => renderFilterLink(tag, 'tag', blogRoutePath, 'vp-blog-tag')).join(' ');
 }
 
 /** What the client reads to filter a post by keyword: its tags, lowercased, joined with `|`. */
@@ -129,17 +146,26 @@ function toTagsAttribute(post: PostPage): string {
   return escapeHtml(post.post.tags.map((tag) => tag.toLowerCase()).join('|'));
 }
 
-/** The attributes the client filters a post by: its keywords, and whether it is an announcement. */
-function toItemAttributes(post: PostPage): string {
-  return `data-vp-blog-item data-tags="${toTagsAttribute(post)}"${post.post.announcement ? ' data-announcement' : ''}`;
+/**
+ * The attributes the client filters a post by: its keywords, its category
+ * (lowercased), the month it was published in (`YYYY-MM`, in the blog's time
+ * zone), and whether it is an announcement.
+ */
+function toItemAttributes(post: PostPage, context: RenderContext): string {
+  const { category, date, announcement } = post.post;
+  const attributes = [`data-vp-blog-item data-tags="${toTagsAttribute(post)}"`];
+  if (category) attributes.push(`data-category="${escapeHtml(category.toLowerCase())}"`);
+  if (date) attributes.push(`data-month="${monthIn(date, context.dates.timeZone)}"`);
+  if (announcement) attributes.push('data-announcement');
+  return attributes.join(' ');
 }
 
-/** Badges for a draft, a sticky post and an announcement, joined with spaces. */
+/** Badges for a draft, a pinned post and an announcement, joined with spaces. */
 function renderBadges(post: PostPage, context: RenderContext): string {
-  const { draft, sticky, announcement } = post.post;
+  const { draft, pinned, announcement } = post.post;
   return [
     draft && renderBadge('draft', context),
-    sticky && renderBadge('sticky', context),
+    pinned && renderBadge('pinned', context),
     announcement && renderBadge('announcement', context),
   ]
     .filter(Boolean)
@@ -193,7 +219,7 @@ function renderCard(post: PostPage, context: RenderContext, index: IndexPage): s
   const link = `/${post.routePath}`;
   const image = toImageSource(post, context.pageDirectory);
   const modifiers = [
-    post.post.sticky && 'sticky',
+    post.post.pinned && 'pinned',
     post.post.draft && 'draft',
     post.post.announcement && 'announcement',
     image && 'with-image',
@@ -204,9 +230,12 @@ function renderCard(post: PostPage, context: RenderContext, index: IndexPage): s
     .join('');
   const alt = escapeMarkdown(post.post.imageAlt);
   return [
-    `<article class="vp-blog-card${modifiers}"${imageStyle(post)} ${toItemAttributes(post)}>`,
+    `<article class="vp-blog-card${modifiers}"${imageStyle(post)} ${toItemAttributes(post, context)}>`,
     ...(image ? block('vp-blog-card__image', `[![${alt}](${toMarkdownUrl(image)})](${toMarkdownUrl(link)})`) : []),
     '<div class="vp-blog-card__body">',
+    ...(index.index.showCategory && post.post.category
+      ? block('vp-blog-card__category', renderFilterLink(post.post.category, 'category', index.routePath, ''))
+      : []),
     ...block('vp-blog-card__title', toPageLink(post.post.title, post.routePath)),
     ...block('vp-blog-card__meta', renderMeta(post, context, { authors: true, updated: false, badges: true })),
     ...block('vp-blog-card__summary', escapeMarkdown(post.post.summary)),
@@ -220,7 +249,7 @@ function renderCompactItem(post: PostPage, context: RenderContext): string {
   const date = post.post.date ? `${renderTime(post.post.date, post.post.dateHasTime, context)} ` : '';
   const badges = renderBadges(post, context);
   // List items can't carry attributes in Markdown, so a hidden marker inside each one does.
-  const marker = `<span hidden ${toItemAttributes(post)}></span>`;
+  const marker = `<span hidden ${toItemAttributes(post, context)}></span>`;
   return `- ${marker}${date}${toPageLink(post.post.title, post.routePath)}${badges ? ` ${badges}` : ''}`;
 }
 
@@ -243,19 +272,31 @@ export function renderGroup(posts: PostPage[], index: IndexPage, context: Render
   ];
 }
 
-/** The posts under year headings, each year in a section the client can hide when none of its posts show. */
-function renderYears(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
-  const years = new Map<string, PostPage[]>();
+/**
+ * The posts under year or month headings ("2026", "October 2026"), each group
+ * in a section the client can hide when none of its posts show.
+ */
+function renderGroups(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
+  const { groupBy } = index.index;
+  if (!groupBy) return renderGroup(posts, index, context);
+  const { timeZone, locale } = context.dates;
+  const groups = new Map<string, PostPage[]>();
   for (const post of posts) {
-    const year = post.post.date ? String(yearIn(post.post.date, context.dates.timeZone)) : context.labels.undated;
-    years.set(year, [...(years.get(year) ?? []), post]);
+    const { date } = post.post;
+    const key = !date ? '' : groupBy === 'year' ? String(yearIn(date, timeZone)) : monthIn(date, timeZone);
+    groups.set(key, [...(groups.get(key) ?? []), post]);
   }
   const lines: string[] = [];
-  for (const [year, group] of years) {
+  for (const [key, group] of groups) {
+    const heading = !key
+      ? context.labels.undated
+      : groupBy === 'year'
+        ? key
+        : formatMonth(key, locale, { month: 'long', year: 'numeric' });
     lines.push(
-      '<section class="vp-blog-year">',
+      `<section class="vp-blog-group vp-blog-${groupBy}">`,
       '',
-      `## ${escapeMarkdown(year)}`,
+      `## ${escapeMarkdown(heading)}`,
       '',
       ...renderGroup(group, index, context),
       '',
@@ -265,34 +306,132 @@ function renderYears(posts: PostPage[], index: IndexPage, context: RenderContext
   return lines;
 }
 
-/** Every keyword the listed posts use, with how many use it, alphabetically. */
-export function collectTags(posts: PostPage[]): { tag: string; count: number }[] {
-  const tags = new Map<string, { tag: string; count: number }>();
-  for (const post of posts) {
-    for (const tag of new Set(post.post.tags)) {
-      const entry = tags.get(tag.toLowerCase()) ?? { tag, count: 0 };
-      entry.count++;
-      tags.set(tag.toLowerCase(), entry);
-    }
-  }
-  return [...tags.values()].sort((a, b) => a.tag.localeCompare(b.tag, undefined, { sensitivity: 'base' }));
+export interface FacetCount {
+  value: string;
+  count: number;
 }
 
-function renderTagList(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
-  const tags = collectTags(posts);
-  if (!index.index.tagList || tags.length === 0) return [];
-  const links = tags.map(
-    ({ tag, count }) =>
-      `[${escapeMarkdown(tag)} <span class="vp-blog-tags__count">${count}</span>](${toTagUrl(index.routePath, tag)})`,
+/** Every distinct value `pick` gives the posts, any case counted once in its first spelling, with how many posts have it, alphabetically. */
+function collectValues(posts: PostPage[], pick: (post: PostPage) => string[]): FacetCount[] {
+  const values = new Map<string, FacetCount>();
+  for (const post of posts) {
+    for (const value of new Set(pick(post))) {
+      const entry = values.get(value.toLowerCase()) ?? { value, count: 0 };
+      entry.count++;
+      values.set(value.toLowerCase(), entry);
+    }
+  }
+  return [...values.values()].sort((a, b) => a.value.localeCompare(b.value, undefined, { sensitivity: 'base' }));
+}
+
+/** Every keyword the listed posts use, with how many use it, alphabetically. */
+export function collectTags(posts: PostPage[]): { tag: string; count: number }[] {
+  return collectValues(posts, (post) => post.post.tags).map(({ value, count }) => ({ tag: value, count }));
+}
+
+/** Every category the listed posts are in, with how many are in it, alphabetically. */
+export function collectCategories(posts: PostPage[]): FacetCount[] {
+  return collectValues(posts, (post) => (post.post.category ? [post.post.category] : []));
+}
+
+export interface ArchiveYear extends FacetCount {
+  /** The year's months that have posts, as `YYYY-MM`, newest first. */
+  months: FacetCount[];
+}
+
+/** The years and months the dated posts were published in, in `timeZone`, with their post counts, newest first. */
+export function collectArchive(posts: PostPage[], timeZone: string): ArchiveYear[] {
+  const years = new Map<string, ArchiveYear>();
+  for (const post of posts) {
+    if (!post.post.date) continue;
+    const month = monthIn(post.post.date, timeZone);
+    const year = years.get(month.slice(0, 4)) ?? { value: month.slice(0, 4), count: 0, months: [] };
+    year.count++;
+    const entry = year.months.find((candidate) => candidate.value === month);
+    if (entry) entry.count++;
+    else year.months.push({ value: month, count: 1 });
+    years.set(year.value, year);
+  }
+  const newestFirst = (a: FacetCount, b: FacetCount) => b.value.localeCompare(a.value);
+  return [...years.values()].sort(newestFirst).map((year) => ({ ...year, months: [...year.months].sort(newestFirst) }));
+}
+
+/** A browse chip: a filter link holding its name and post count, with an optional tooltip. */
+function renderChip(name: string, count: number, url: string, title = ''): string {
+  const tooltip = title ? ` "${title.replace(/"/g, '&quot;')}"` : '';
+  return (
+    `[<span class="vp-blog-facet__name">${escapeMarkdown(name)}</span> ` +
+    `<span class="vp-blog-facet__count">${count}</span>](${url}${tooltip})`
   );
-  const label = `<span class="vp-blog-tags__label">${escapeTemplateText(context.labels.tags)}</span>`;
+}
+
+/** One row of the browse panel: a label, then its chips. `attributes` are added to the row. */
+function renderFacet(facet: FilterParam, label: string, chips: string[], ariaLabel = label, attributes = ''): string[] {
   return [
-    `<nav class="vp-blog-tags" aria-label="${escapeHtml(context.labels.tags)}">`,
+    `<div class="vp-blog-facet vp-blog-facet--${facet}" role="group" aria-label="${escapeHtml(ariaLabel)}" data-vp-blog-facet="${facet}"${attributes}>`,
+    `<span class="vp-blog-facet__label" aria-hidden="true">${escapeTemplateText(label)}</span>`,
+    '<div class="vp-blog-facet__chips">',
     '',
-    `${label} ${links.join(' ')}`,
+    chips.join(' '),
     '',
-    '</nav>',
+    '</div>',
+    '</div>',
   ];
+}
+
+/**
+ * The browse panel above a blog page's posts: a row of categories, a row of
+ * keywords, and an archive of years, each chip a filter with its post count.
+ * Below the years, one row of months per year, which the client shows for the
+ * year being viewed (always, when there is only one year). The archive is left
+ * out when every dated post is in the same month: it would have nothing to choose.
+ */
+function renderBrowse(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
+  const { labels } = context;
+  const { locale, timeZone } = context.dates;
+  const blog = index.routePath;
+  const rows: string[] = [];
+
+  const categories = index.index.categoryList ? collectCategories(posts) : [];
+  if (categories.length) {
+    const chips = categories.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'category', value)));
+    rows.push(...renderFacet('category', labels.categories, chips));
+  }
+
+  const tags = index.index.tagList ? collectTags(posts) : [];
+  if (tags.length) {
+    const chips = tags.map(({ tag, count }) => renderChip(tag, count, toFilterUrl(blog, 'tag', tag)));
+    rows.push(...renderFacet('tag', labels.tags, chips));
+  }
+
+  const archive = index.index.archive ? collectArchive(posts, timeZone) : [];
+  if (archive.reduce((months, year) => months + year.months.length, 0) > 1) {
+    const years = archive.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'year', value)));
+    rows.push(...renderFacet('year', labels.archive, years));
+    for (const year of archive) {
+      const months = year.months.map(({ value, count }) =>
+        renderChip(
+          formatMonth(value, locale, { month: 'short' }),
+          count,
+          toFilterUrl(blog, 'month', value),
+          formatMonth(value, locale, { month: 'long', year: 'numeric' }),
+        ),
+      );
+      const shown = archive.length === 1 ? '' : ' hidden';
+      rows.push(
+        ...renderFacet(
+          'month',
+          year.value,
+          months,
+          `${labels.archive} ${year.value}`,
+          ` data-year="${year.value}"${shown}`,
+        ),
+      );
+    }
+  }
+
+  if (rows.length === 0) return [];
+  return [`<nav class="vp-blog-browse" aria-label="${escapeHtml(labels.browse)}">`, ...rows, '</nav>'];
 }
 
 /** Labels the client needs, as data attributes, so they are translated in one place. */
@@ -300,14 +439,19 @@ function renderClientAttributes(index: IndexPage, context: RenderContext): strin
   const { labels } = context;
   const attributes: Record<string, string> = {
     'data-page-size': String(index.index.pageSize),
-    'data-label-tagged': labels.tagged,
+    // For writing a `?month=` filter's name: "October 2026".
+    'data-locale': context.locale,
     'data-label-show-all': labels.showAll,
-    'data-label-no-tagged': labels.noTagged,
     'data-label-previous': labels.previous,
     'data-label-next': labels.next,
     'data-label-pages': labels.pages,
     'data-label-announcements': labels.announcements,
-    'data-label-no-announcements': labels.noAnnouncements,
+    'data-label-category': labels.category,
+    'data-label-tag': labels.tag,
+    'data-label-post-count': labels.postCount,
+    'data-label-post-count-one': labels.postCountOne,
+    'data-label-no-matches': labels.noMatches,
+    'data-label-remove-filter': labels.removeFilter,
   };
   return Object.entries(attributes)
     .map(([name, value]) => `${name}="${escapeHtml(value)}"`)
@@ -315,10 +459,11 @@ function renderClientAttributes(index: IndexPage, context: RenderContext): strin
 }
 
 /**
- * Renders a blog page's posts as Markdown: the keyword list, the pinned
- * sticky posts, then the rest (under year headings if the page asks for it).
- * Every post is in the HTML; `useBlog()` in the theme then filters them by
- * keyword and splits them into pages, using the empty slots written here.
+ * Renders a blog page's posts as Markdown: the browse panel, the pinned
+ * posts, then the rest (under year or month headings if the page asks
+ * for it). Every post is in the HTML; `useBlog()` in the theme then filters
+ * them by category, keyword and date and splits them into pages, using the
+ * empty slots written here.
  */
 export function renderPostList(pinned: PostPage[], rest: PostPage[], index: IndexPage, context: RenderContext): string {
   const all = [...pinned, ...rest];
@@ -326,17 +471,16 @@ export function renderPostList(pinned: PostPage[], rest: PostPage[], index: Inde
   const lines = [
     `<div class="vp-blog" data-vp-blog ${renderClientAttributes(index, context)}>`,
     ...block('vp-blog-subscribe', renderRssLink(index, context)),
-    ...renderTagList(all, index, context),
-    '<div class="vp-blog-filter" data-vp-blog-filter hidden></div>',
+    ...renderBrowse(all, index, context),
+    '<div class="vp-blog-filter" data-vp-blog-filter role="status" hidden></div>',
   ];
   if (pinned.length)
     lines.push(
-      '<section class="vp-blog-sticky" data-vp-blog-sticky>',
+      '<section class="vp-blog-pinned" data-vp-blog-pinned>',
       ...renderGroup(pinned, index, context),
       '</section>',
     );
-  if (rest.length)
-    lines.push(...(index.index.groupByYear ? renderYears(rest, index, context) : renderGroup(rest, index, context)));
+  if (rest.length) lines.push(...renderGroups(rest, index, context));
   lines.push(`<nav class="vp-blog-pagination" data-vp-blog-pagination hidden></nav>`, '</div>');
   return `${lines.join('\n')}\n`;
 }
@@ -347,8 +491,9 @@ export interface PostDecorations {
 }
 
 /**
- * The author, date and tags block under a post's title, and its cover image.
- * Its keywords link to `blogRoutePath` (the post's own blog) filtered by them.
+ * The author, date, category and tags block under a post's title, and its
+ * cover image. Its category and keywords link to `blogRoutePath` (the post's
+ * own blog) filtered by them.
  */
 export function renderPostHeader(
   post: PostPage,
@@ -359,10 +504,15 @@ export function renderPostHeader(
   const lines: string[] = [];
   if (show.byline) {
     const meta = renderMeta(post, context, { authors: true, updated: true, badges: true });
-    const tags = post.post.tags.length
-      ? `<span class="vp-blog-byline__tags">${renderTags(post.post.tags, blogRoutePath)}</span>`
-      : '';
-    lines.push(...block('vp-blog-byline', [meta, tags].filter(Boolean).join('\n\n')));
+    const { category, tags } = post.post;
+    const chips = [
+      category &&
+        `<span class="vp-blog-byline__category">${renderFilterLink(category, 'category', blogRoutePath, 'vp-blog-category')}</span>`,
+      tags.length && `<span class="vp-blog-byline__tags">${renderTags(tags, blogRoutePath)}</span>`,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    lines.push(...block('vp-blog-byline', [meta, chips].filter(Boolean).join('\n\n')));
   }
   if (show.cover && post.post.image) {
     // Written relative to the post itself, as the author wrote it.

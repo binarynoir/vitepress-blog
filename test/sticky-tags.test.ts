@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { isPost, pinStickyPosts, type PostPage } from '../src/collect.js';
+import { isPost, pinPosts, type PostPage } from '../src/collect.js';
 import { collectTags, toTagUrl } from '../src/render.js';
 import { indexBlogSource } from '../src/scan.js';
 import { frontmatter, Site } from './helpers.js';
@@ -13,11 +13,11 @@ function post(name: string, date: string, extra: string[] = []): [string, string
 beforeAll(() => {
   site.write(
     'news/index.md',
-    frontmatter(['title: News', 'blog-index:', '  stickyLimit: 1', '  pageSize: 2'], '# News\n'),
+    frontmatter(['title: News', 'blog-index:', '  pinLimit: 1', '  pageSize: 2'], '# News\n'),
   );
   for (const [path, content] of [
-    post('alpha', '2026-01-01', ['  sticky: true', '  tags: [Release, api]']),
-    post('beta', '2026-02-01', ['  sticky: true', '  tags: [release]']),
+    post('alpha', '2026-01-01', ['  pinned: true', '  tags: [Release, api]']),
+    post('beta', '2026-02-01', ['  pinned: true', '  tags: [release]']),
     post('gamma', '2026-03-01', ['  tags: [api]']),
     post('delta', '2026-04-01'),
   ]) {
@@ -27,21 +27,21 @@ beforeAll(() => {
 
 afterAll(() => site.remove());
 
-describe('pinStickyPosts', () => {
+describe('pinPosts', () => {
   const posts = () =>
     indexBlogSource(site.root)
       .filter(isPost)
       .sort((a, b) => b.post.date!.getTime() - a.post.date!.getTime()) as PostPage[];
   const titles = (list: PostPage[]) => list.map((page) => page.post.title);
 
-  it('pins the newest sticky posts up to the limit, and keeps the rest in date order', () => {
-    const { pinned, rest } = pinStickyPosts(posts(), 1);
+  it('pins the newest pinned posts up to the limit, and keeps the rest in date order', () => {
+    const { pinned, rest } = pinPosts(posts(), 1);
     expect(titles(pinned)).toEqual(['beta']);
     expect(titles(rest)).toEqual(['delta', 'gamma', 'alpha']);
   });
 
-  it('pins every sticky post with a limit of 0', () => {
-    expect(titles(pinStickyPosts(posts(), 0).pinned)).toEqual(['beta', 'alpha']);
+  it('pins every pinned post with a limit of 0', () => {
+    expect(titles(pinPosts(posts(), 0).pinned)).toEqual(['beta', 'alpha']);
   });
 });
 
@@ -64,30 +64,32 @@ describe('keywords', () => {
 describe('a blog page', () => {
   const html = () => site.render('news/index.md');
 
-  it('pins sticky posts in their own section, up to stickyLimit', () => {
+  it('keeps pinned posts in their own section, up to pinLimit', () => {
     const page = html();
-    const sticky = page.slice(page.indexOf('data-vp-blog-sticky'), page.indexOf('</section>'));
-    expect(sticky).toContain('>beta</a>');
-    expect(sticky).not.toContain('>alpha</a>');
+    const pinned = page.slice(page.indexOf('data-vp-blog-pinned'), page.indexOf('</section>'));
+    expect(pinned).toContain('>beta</a>');
+    expect(pinned).not.toContain('>alpha</a>');
     expect(page.indexOf('>beta</a>')).toBeLessThan(page.indexOf('>delta</a>'));
   });
 
   it('lists every keyword with its count, each a filter link', () => {
     // Spelled as the first listed post spells it: the pinned beta writes "release".
-    expect(html()).toContain('<a href="/news/?tag=release">release <span class="vp-blog-tags__count">2</span></a>');
+    expect(html()).toContain(
+      '<a href="/news/?tag=release"><span class="vp-blog-facet__name">release</span> <span class="vp-blog-facet__count">2</span></a>',
+    );
   });
 
   it('gives the client the page size, labels and each post keywords', () => {
     const page = html();
     expect(page).toContain('data-page-size="2"');
-    expect(page).toContain('data-label-tagged="Posts tagged {tag}"');
+    expect(page).toContain('data-label-remove-filter="Remove filter: {filter}"');
     expect(page).toContain('data-tags="release|api"');
   });
 
   it('leaves the keyword list out with tagList: false', () => {
     site.write('quiet/index.md', frontmatter(['blog-index:', '  tagList: false'], '# Quiet\n'));
     site.write('quiet/post.md', frontmatter(['blog:', '  tags: [x]'], '# Post\n'));
-    expect(site.render('quiet/index.md')).not.toContain('vp-blog-tags');
+    expect(site.render('quiet/index.md')).not.toContain('vp-blog-facet--tag');
   });
 });
 

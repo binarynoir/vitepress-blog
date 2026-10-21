@@ -57,7 +57,7 @@ describe('resolvePostData', () => {
       date: null,
       authors: [],
       tags: [],
-      sticky: false,
+      pinned: false,
       draft: false,
       readingMinutes: 1,
     });
@@ -78,7 +78,7 @@ describe('resolvePostData', () => {
         '  tags: [a, b]',
         '  category: News',
         '  scope: site',
-        '  sticky: true',
+        '  pinned: true',
         '  draft: true',
         '  byline: false',
       ].join('\n'),
@@ -92,7 +92,7 @@ describe('resolvePostData', () => {
       tags: ['a', 'b'],
       category: 'News',
       scope: 'site',
-      sticky: true,
+      pinned: true,
       draft: true,
       byline: false,
     });
@@ -191,13 +191,17 @@ describe('resolveIndexConfig', () => {
       scope: 'section',
       folders: ['news'],
       tags: [],
+      categories: [],
       limit: 0,
       layout: 'list',
-      groupByYear: false,
+      groupBy: '',
       showTags: true,
+      showCategory: true,
+      categoryList: true,
       tagList: true,
+      archive: true,
       pageSize: 10,
-      stickyLimit: 0,
+      pinLimit: 0,
       rssLink: true,
       feed: { path: 'feed.xml' },
     });
@@ -217,13 +221,17 @@ describe('resolveIndexConfig', () => {
         'blog-index': {
           folders: ['./posts', 'shared'],
           tags: 'release',
+          categories: ['News', 'Engineering'],
           limit: 5,
           layout: 'grid',
-          groupBy: 'year',
+          groupBy: 'month',
           showTags: false,
+          showCategory: false,
+          categoryList: false,
           tagList: false,
+          archive: false,
           pageSize: 5,
-          stickyLimit: 2,
+          pinLimit: 2,
           rssLink: false,
           feed: { title: 'T', description: 'D', limit: 3, path: 'rss.xml' },
         },
@@ -234,28 +242,45 @@ describe('resolveIndexConfig', () => {
       scope: 'section',
       folders: ['news/posts', 'shared'],
       tags: ['release'],
+      categories: ['News', 'Engineering'],
       limit: 5,
       layout: 'grid',
-      groupByYear: true,
+      groupBy: 'month',
       showTags: false,
+      showCategory: false,
+      categoryList: false,
       tagList: false,
+      archive: false,
       pageSize: 5,
-      stickyLimit: 2,
+      pinLimit: 2,
       rssLink: false,
       feed: { title: 'T', description: 'D', limit: 3, path: 'rss.xml' },
     });
   });
 
-  it('takes pageSize and stickyLimit from the plugin options, and 0 turns them off', () => {
-    expect(resolveIndexConfig({ 'blog-index': true }, 'index.md', { pageSize: 4, stickyLimit: 1 })).toMatchObject({
+  it('takes pageSize and pinLimit from the plugin options, and 0 turns them off', () => {
+    expect(resolveIndexConfig({ 'blog-index': true }, 'index.md', { pageSize: 4, pinLimit: 1 })).toMatchObject({
       pageSize: 4,
-      stickyLimit: 1,
+      pinLimit: 1,
     });
     expect(resolveIndexConfig({ 'blog-index': { pageSize: 0 } }, 'index.md', { pageSize: 4 })?.pageSize).toBe(0);
   });
 
+  it('still reads stickyLimit, the old name of pinLimit', () => {
+    expect(resolveIndexConfig({ 'blog-index': { stickyLimit: 2 } }, 'index.md')?.pinLimit).toBe(2);
+    expect(resolveIndexConfig({ 'blog-index': true }, 'index.md', { stickyLimit: 3 })?.pinLimit).toBe(3);
+    expect(resolveIndexConfig({ 'blog-index': { pinLimit: 1, stickyLimit: 2 } }, 'index.md')?.pinLimit).toBe(1);
+  });
+
   it('turns the feed off with feed: false', () => {
     expect(resolveIndexConfig({ 'blog-index': { feed: false } }, 'index.md')?.feed).toBeNull();
+  });
+});
+
+describe('the old sticky name', () => {
+  it('still pins a post, unless pinned says otherwise', () => {
+    expect(resolvePostData({ blog: { sticky: true } }, '', 'x')?.pinned).toBe(true);
+    expect(resolvePostData({ blog: { sticky: true, pinned: false } }, '', 'x')?.pinned).toBe(false);
   });
 });
 

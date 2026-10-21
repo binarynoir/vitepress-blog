@@ -33,9 +33,9 @@ blog:
 ```
 
 - **Blog pages** (`blog-index` in the frontmatter) get a list of posts: cards
-  with image, title, date, reading time, authors, summary and tags. Sticky
-  posts are pinned to the top, the rest are split into pages, and a keyword
-  list above them filters the posts by tag.
+  with image, title, date, reading time, authors, summary and tags. Pinned
+  posts stay at the top, the rest are split into pages, and a browse
+  panel above them filters the posts by category, keyword, year and month.
 - **Posts** (`blog` in the frontmatter) get a byline under their title, links to
   the newer and older posts, and Open Graph and Twitter card tags.
 - **Every blog page gets an RSS feed**, written beside it at build time and
@@ -43,8 +43,8 @@ blog:
 - Lists are plain Markdown generated at build time, with every post in the
   HTML, so they show up in search and work without JavaScript. Links go
   through VitePress, so they get your `base` and `cleanUrls` and are checked
-  for dead links. A small composable, `useBlog()`, adds pages and keyword
-  filtering in the browser.
+  for dead links. A small composable, `useBlog()`, adds pages and filtering
+  in the browser.
 
 ## Install
 
@@ -83,7 +83,7 @@ import '@binarynoir/vitepress-blog/style.css';
 export default {
   extends: DefaultTheme,
   setup() {
-    // Pages (?page=2) and keyword filtering (?tag=release) on blog pages.
+    // Pages (?page=2) and filters (?category=, ?tag=, ?year=, ?month=) on blog pages.
     useBlog();
   },
 };
@@ -133,37 +133,56 @@ blog:
   image: ./launch.png
   imageAlt: The release dashboard
   author: [jane, Sam Lee]
-  tags: [release, team-a]
-  category: Engineering
+  tags: [team-a, dashboard]
+  category: Releases
   scope: site
-  sticky: true
+  pinned: true
 ---
 ```
 
-| Key             | Default                                    | What it does                                                                                                                                              |
-| --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `title`         | the page's `title`, then its `#` heading   | Title in lists, feeds and social cards.                                                                                                                   |
-| `summary`       | the page's `description`, then first prose | One or two sentences for cards, feeds and `<meta name="description">`.                                                                                    |
-| `date`          | none                                       | When the post was published: a date, or a date and time. See [Dates and times](#dates-and-times). Newest first; undated posts go last.                    |
-| `updated`       | none                                       | When the post was last changed, in the same forms. The byline shows both: "Published … · Updated …". It is the feed's last-updated time.                  |
-| `image`         | none                                       | Card, social and feed image: a path relative to the post, a public path (`/cover.png`) or a URL. `{ src, alt, fit, position }` also works.                |
-| `imageAlt`      | `''`                                       | Alt text for the image.                                                                                                                                   |
-| `imageFit`      | `cover`                                    | How cards fit the image in their frame: `cover` crops it to fill the frame, `contain` shows all of it, letterboxed. Use `contain` for logos and diagrams. |
-| `imagePosition` | the centre                                 | Which part of a cropped image stays in view, as CSS `object-position`: `top`, `left`, `30% 20%`.                                                          |
-| `author`        | the `defaultAuthor` option                 | A name, a key from the `authors` option, `{ name, url, email }`, or a list of these. `authors` works too.                                                 |
-| `tags`          | none                                       | A list or a comma-separated string. Shown as chips and written to the feed as categories.                                                                 |
-| `category`      | none                                       | Written to the feed and `article:section`.                                                                                                                |
-| `scope`         | `section`                                  | `site` (or `global`) also lists the post on the main blog. See [Scopes](#scopes).                                                                         |
-| `sticky`        | `false`                                    | Pinned to the top of its blog pages, above the paginated posts, with a Pinned badge. See [Sticky posts](#sticky-posts).                                   |
-| `announcement`  | `false`                                    | `true`, or the banner's text, shows the post in the announcement banner above the nav bar. See [Announcements](#announcements).                           |
-| `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: to leave drafts out of the build, the sidebar and the navbar too, see [Drafts](#drafts).     |
-| `byline`        | the `byline` option                        | `false` hides this post's byline.                                                                                                                         |
-| `cover`         | the `cover` option                         | `true` shows this post's image under its byline.                                                                                                          |
-| `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links.                                                                                                            |
+| Key             | Default                                    | What it does                                                                                                                                                                                              |
+| --------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`         | the page's `title`, then its `#` heading   | Title in lists, feeds and social cards.                                                                                                                                                                   |
+| `summary`       | the page's `description`, then first prose | One or two sentences for cards, feeds and `<meta name="description">`.                                                                                                                                    |
+| `date`          | none                                       | When the post was published: a date, or a date and time. See [Dates and times](#dates-and-times). Newest first; undated posts go last.                                                                    |
+| `updated`       | none                                       | When the post was last changed, in the same forms. The byline shows both: "Published … · Updated …". It is the feed's last-updated time.                                                                  |
+| `image`         | none                                       | Card, social and feed image: a path relative to the post, a public path (`/cover.png`) or a URL. `{ src, alt, fit, position }` also works.                                                                |
+| `imageAlt`      | `''`                                       | Alt text for the image.                                                                                                                                                                                   |
+| `imageFit`      | `cover`                                    | How cards fit the image in their frame: `cover` crops it to fill the frame, `contain` shows all of it, letterboxed. Use `contain` for logos and diagrams.                                                 |
+| `imagePosition` | the centre                                 | Which part of a cropped image stays in view, as CSS `object-position`: `top`, `left`, `30% 20%`.                                                                                                          |
+| `author`        | the `defaultAuthor` option                 | A name, a key from the `authors` option, `{ name, url, email }`, or a list of these. `authors` works too.                                                                                                 |
+| `tags`          | none                                       | Any number of topics: a list or a comma-separated string. Shown as chips, each a filter, and written to the feed as categories. See [Category or tags?](#category-or-tags).                               |
+| `category`      | none                                       | The one kind of post this is, such as `Releases`. Shown above its title on cards and in its byline, each a filter. Written to the feed and `article:section`. See [Category or tags?](#category-or-tags). |
+| `scope`         | `section`                                  | `site` (or `global`) also lists the post on the main blog. See [Scopes](#scopes).                                                                                                                         |
+| `pinned`        | `false`                                    | Kept at the top of its blog pages, above the paginated posts, with a Pinned badge. See [Pinned posts](#pinned-posts).                                                                                     |
+| `announcement`  | `false`                                    | `true`, or the banner's text, shows the post in the announcement banner above the nav bar. See [Announcements](#announcements).                                                                           |
+| `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: to leave drafts out of the build, the sidebar and the navbar too, see [Drafts](#drafts).                                                     |
+| `byline`        | the `byline` option                        | `false` hides this post's byline.                                                                                                                                                                         |
+| `cover`         | the `cover` option                         | `true` shows this post's image under its byline.                                                                                                                                                          |
+| `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links.                                                                                                                                                            |
 
 Title, description, date, author(s), image and tags may also be written at the
 top level of the frontmatter, as other blog tools expect. A value under `blog`
 wins.
+
+### Category or tags?
+
+Both sort posts, in different ways:
+
+- **`category` is the one way you slice the blog.** Each post has exactly one,
+  from a short list that rarely changes. It is the label above the title on
+  cards, and the first row of the browse panel. Pick the axis your readers
+  browse by most: the kind of post (Releases, Guides, News), the team, or the
+  product line.
+- **`tags` are everything else a post is about.** A post can have several, and
+  new ones can appear at any time: the product it changes, the feature, the
+  topic.
+- **Don't say the same thing twice.** If a post's category is Releases, a
+  `release` tag adds nothing.
+- **`categories:` on a blog page is a filter, not a label.**
+  `blog-index: { categories: [Releases] }` makes a page that lists only
+  releases. `tags:` works the same way there, and both work in
+  `::: blog-posts` blocks.
 
 ### Dates and times
 
@@ -248,57 +267,89 @@ Notes from Team A.
 
 The list goes where `<!-- blog-posts -->` is, or after the page's content.
 
-| Key           | Default                        | What it does                                                                                    |
-| ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `scope`       | `section`                      | `site` makes this the main blog. See [Scopes](#scopes).                                         |
-| `folders`     | the page's folder              | Folders to list posts from, relative to the source directory; `./` and `../` are page-relative. |
-| `tags`        | all                            | Only list posts with at least one of these tags.                                                |
-| `limit`       | all                            | Most posts to list. The feed has its own limit.                                                 |
-| `layout`      | `list`                         | `list` (image beside text), `grid` (cards) or `compact` (dates and titles).                     |
-| `groupBy`     | none                           | `year` puts a heading above each year's posts.                                                  |
-| `showTags`    | `true`                         | `false` hides tag chips on cards.                                                               |
-| `tagList`     | `true`                         | A keyword list above the posts: every tag with its count, each a filter. `false` leaves it out. |
-| `pageSize`    | `10` (the `pageSize` option)   | Posts per page. `0` shows them all on one page.                                                 |
-| `stickyLimit` | all (the `stickyLimit` option) | Most sticky posts pinned to the top. Extra ones take their place by date.                       |
-| `rssLink`     | `true` (the `rssLink` option)  | A "Subscribe" link with the RSS icon to this blog's feed. `false` leaves it out.                |
-| `feed`        | on                             | `false` turns the feed off, or `{ title, description, limit, path }` to set it up.              |
+| Key            | Default                       | What it does                                                                                    |
+| -------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `scope`        | `section`                     | `site` makes this the main blog. See [Scopes](#scopes).                                         |
+| `folders`      | the page's folder             | Folders to list posts from, relative to the source directory; `./` and `../` are page-relative. |
+| `tags`         | all                           | Only list posts with at least one of these tags.                                                |
+| `categories`   | all                           | Only list posts in one of these categories.                                                     |
+| `limit`        | all                           | Most posts to list. The feed has its own limit.                                                 |
+| `layout`       | `list`                        | `list` (image beside text), `grid` (cards) or `compact` (dates and titles).                     |
+| `groupBy`      | none                          | `year` or `month` puts a heading ("2026", "October 2026") above each year's or month's posts.   |
+| `showTags`     | `true`                        | `false` hides tag chips on cards.                                                               |
+| `showCategory` | `true`                        | `false` hides the category above each card's title.                                             |
+| `categoryList` | `true`                        | A row of categories in the browse panel, each with its count. `false` leaves it out.            |
+| `tagList`      | `true`                        | A row of keywords in the browse panel, each with its count. `false` leaves it out.              |
+| `archive`      | `true`                        | Rows of years, and each year's months, in the browse panel. `false` leaves them out.            |
+| `pageSize`     | `10` (the `pageSize` option)  | Posts per page. `0` shows them all on one page.                                                 |
+| `pinLimit`     | all (the `pinLimit` option)   | Most pinned posts kept at the top. Extra ones take their place by date.                         |
+| `rssLink`      | `true` (the `rssLink` option) | A "Subscribe" link with the RSS icon to this blog's feed. `false` leaves it out.                |
+| `feed`         | on                            | `false` turns the feed off, or `{ title, description, limit, path }` to set it up.              |
 
-### Sticky posts
+### Pinned posts
 
-`sticky: true` pins a post to the top of every blog page that lists it, in its
+`pinned: true` keeps a post at the top of every blog page that lists it, in its
 own section above the other posts, with a Pinned badge. Pinned posts show on
 the first page only and don't count toward `pageSize`. When more posts are
-sticky than a page's `stickyLimit`, the newest ones are pinned and the others
-take their place by date. Feeds ignore stickiness and stay in date order.
+pinned than a page's `pinLimit`, the newest ones stay on top and the others
+take their place by date. Feeds ignore pinning and stay in date order.
 
-To keep sticky posts on top of an [Auto Sidebar](https://binarynoir.tech/plugins/auto-sidebar/)
-sidebar too, sort the blog folder by stickiness, then date:
+`sticky` and `stickyLimit`, the old names of `pinned` and `pinLimit`, are
+still read, so existing posts and pages keep working.
+
+To keep pinned posts on top of an [Auto Sidebar](https://binarynoir.tech/plugins/auto-sidebar/)
+sidebar too, sort the blog folder by pinning, then date:
 
 ```txt
 # docs/blog/.sidebar
 index.md:All posts
-.sort: blog.sticky desc, date desc
+.sort: blog.pinned desc, date desc
 ```
 
-The sidebar pins every sticky post; `stickyLimit` applies to blog pages.
+The sidebar pins every pinned post; `pinLimit` applies to blog pages.
 
-### Pages and keywords
+### Browsing: pages, categories, keywords and dates
 
 Every post is written into the blog page's HTML, so search engines, local
 search and readers without JavaScript see them all. With `useBlog()` in your
 theme (see [Usage](#usage)), the browser then shows one page at a time and
-filters by keyword, both from the URL:
+filters the posts, all from the URL:
 
-- `?page=2` shows the second page. Previous, page number and Next links are
-  added below the posts when there is more than one page.
-- `?tag=release` shows only posts tagged `release` (in any case), with a
-  "Posts tagged release · Show all posts" line above them. Pages then count
-  the matching posts only.
+| URL                 | Shows                                                    |
+| ------------------- | -------------------------------------------------------- |
+| `?page=2`           | The second page. Page links are added below the posts.   |
+| `?category=product` | Posts in the `Product` category, in any case.            |
+| `?tag=release`      | Posts tagged `release`, in any case.                     |
+| `?year=2026`        | Posts published in 2026, in the `timeZone` option.       |
+| `?month=2026-10`    | Posts published in October 2026. It wins over `?year=`.  |
+| `?announcements`    | Announcements only. See [Announcements](#announcements). |
 
-Keywords are links everywhere they appear: in the keyword list at the top of
-a blog page, on each card, and in a post's byline, where they link to the
-post's own blog, filtered. They are ordinary links, so VitePress follows them
-without reloading the page, and each filtered view has its own URL to share.
+Filters combine: `?category=engineering&tag=api&year=2026` shows the
+engineering posts tagged `api` from 2026. Pages count the matching posts only.
+
+**The browse panel** above the posts has a row each for categories, keywords
+and the archive, each chip with its post count:
+
+- **Chips combine.** A chip adds its filter to the ones in view; another chip
+  in the same row replaces it, and clicking the active chip takes it off again.
+- **Counts follow the view.** Each count says how many posts the chip would
+  show with the other filters kept, so readers can see where a click leads.
+  Chips that would show nothing are dimmed.
+- **Years open into months.** Choosing a year shows a row of its months below
+  the years (with only one year, its months always show). A month keeps its
+  year active, and clicking it again steps back out to the whole year.
+- Rows only appear when they have something to choose: no categories means no
+  category row, and the archive needs posts from more than one month.
+
+**The active filters** show above the posts while any filter is on: how many
+posts match ("4 posts", or "No posts match these filters."), a chip for each
+filter that removes just that one, and "Show all posts" to clear them all. It
+is a status region, so screen readers announce the new count.
+
+Categories and keywords are links wherever they appear: in the browse panel,
+on each card, and in a post's byline, where they link to the post's own blog,
+filtered. They are ordinary links, so VitePress follows them without
+reloading the page, and each filtered view has its own URL to share.
 
 ## Announcements
 
@@ -363,28 +414,30 @@ own settings:
 ::: blog-posts
 blog: /blog/
 limit: 3
-stickyLimit: 1
+pinLimit: 1
 layout: grid
 more: All posts →
 :::
 ```
 
-| Key           | Default               | What it does                                                                                                      |
-| ------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `blog`        | the page's own blog   | The blog to show: its URL (`/blog/`) or file (`blog/index.md`); `./` and `../` are page-relative.                 |
-| `limit`       | `5`                   | Most posts shown, pinned ones included. `0` shows them all.                                                       |
-| `stickyLimit` | the blog page's       | Most sticky posts pinned to the top. `0` pins them all.                                                           |
-| `layout`      | the blog page's       | `list`, `grid` or `compact`.                                                                                      |
-| `showTags`    | the blog page's       | `false` hides keyword chips.                                                                                      |
-| `tags`        | all                   | Only show posts with at least one of these keywords.                                                              |
-| `more`        | `All posts in {blog}` | Text of the link to the blog page below the posts. `false` leaves the link out.                                   |
-| `rssLink`     | the blog page's       | A "Subscribe" link with the RSS icon to the blog's feed, beside the link to the blog page. `false` leaves it out. |
+| Key            | Default               | What it does                                                                                                      |
+| -------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `blog`         | the page's own blog   | The blog to show: its URL (`/blog/`) or file (`blog/index.md`); `./` and `../` are page-relative.                 |
+| `limit`        | `5`                   | Most posts shown, pinned ones included. `0` shows them all.                                                       |
+| `pinLimit`     | the blog page's       | Most pinned posts kept at the top. `0` pins them all.                                                             |
+| `layout`       | the blog page's       | `list`, `grid` or `compact`.                                                                                      |
+| `showTags`     | the blog page's       | `false` hides keyword chips.                                                                                      |
+| `showCategory` | the blog page's       | `false` hides the category above each title.                                                                      |
+| `tags`         | all                   | Only show posts with at least one of these keywords.                                                              |
+| `categories`   | all                   | Only show posts in one of these categories.                                                                       |
+| `more`         | `All posts in {blog}` | Text of the link to the blog page below the posts. `false` leaves the link out.                                   |
+| `rssLink`      | the blog page's       | A "Subscribe" link with the RSS icon to the blog's feed, beside the link to the blog page. `false` leaves it out. |
 
 - The page's own blog is the deepest section blog covering its folder, else
   the main blog, so a block on the home page shows the main blog and one on
   a section's page shows that section's blog.
 - It shows the posts its blog lists, newest first, with no drafts unless the
-  `drafts` option is on. Keyword chips link to the blog page, filtered.
+  `drafts` option is on. Category and keyword links go to the blog page, filtered.
 - It is written into the page at build time, like blog pages, and refreshes in
   `vitepress dev` when a post changes. A page can hold several blocks. A
   block inside a code fence is left as written.
@@ -464,7 +517,7 @@ link that copy. Public paths (`/cover.png`) and URLs are linked as they are.
 | `feedLimit`      | `20`                                                            | Most posts in each feed.                                                                                              |
 | `imagesDir`      | `'blog-images'`                                                 | Output folder for copied post images.                                                                                 |
 | `pageSize`       | `10`                                                            | Posts per page on blog pages that don't set `pageSize`. `0` turns pages off.                                          |
-| `stickyLimit`    | `0` (all)                                                       | Most pinned sticky posts on blog pages that don't set `stickyLimit`.                                                  |
+| `pinLimit`       | `0` (all)                                                       | Most pinned posts on blog pages that don't set `pinLimit`.                                                            |
 | `rssLink`        | `true`                                                          | A "Subscribe" RSS link on blog pages and blocks that don't set `rssLink`.                                             |
 | `labels`         | English                                                         | Words the plugin writes, for translating. See below.                                                                  |
 
@@ -481,18 +534,24 @@ withBlog(config, {
     older: 'Älterer Beitrag',
     allPosts: 'Alle Beiträge in {blog}',
     draft: 'Entwurf',
-    sticky: 'Angeheftet',
+    pinned: 'Angeheftet',
     announcement: 'Ankündigung',
     announcements: 'Ankündigungen',
-    noAnnouncements: 'Keine Ankündigungen.',
     announcementCount: '{n} Ankündigungen',
     dismiss: 'Schließen',
     noPosts: 'Noch keine Beiträge.',
     undated: 'Ohne Datum',
+    browse: 'Beiträge durchsuchen',
+    categories: 'Kategorien',
     tags: 'Schlagwörter',
-    tagged: 'Beiträge mit {tag}',
+    archive: 'Archiv',
+    category: 'Kategorie',
+    tag: 'Schlagwort',
+    postCount: '{n} Beiträge',
+    postCountOne: '{n} Beitrag',
+    noMatches: 'Keine Beiträge für diese Filter.',
+    removeFilter: 'Filter entfernen: {filter}',
     showAll: 'Alle Beiträge zeigen',
-    noTagged: 'Keine Beiträge mit {tag}.',
     previous: 'Zurück',
     next: 'Weiter',
     pages: 'Seiten',
@@ -516,6 +575,8 @@ mode. Override these to restyle it without new rules:
 | `--vp-blog-tag-bg`              | `var(--vp-c-default-soft)`    |
 | `--vp-blog-tag-color`           | `var(--vp-c-text-2)`          |
 | `--vp-blog-accent`              | `var(--vp-c-brand-1)`         |
+| `--vp-blog-browse-bg`           | `var(--vp-c-bg-soft)`         |
+| `--vp-blog-facet-label-width`   | `6.5rem`                      |
 | `--vp-blog-announcement-height` | `40px`                        |
 | `--vp-blog-announcement-bg`     | `var(--vp-button-brand-bg)`   |
 | `--vp-blog-announcement-color`  | `var(--vp-button-brand-text)` |

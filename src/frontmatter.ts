@@ -4,6 +4,7 @@ import { parsePostDate, resolveTimeZone } from './dates.js';
 import type {
   BlogAuthor,
   BlogFeedConfig,
+  BlogGroupBy,
   BlogIndexConfig,
   BlogLayout,
   BlogOptions,
@@ -202,7 +203,8 @@ export function resolvePostData(
     tags: toStringList(pick('tags')),
     category: toText(pick('category')),
     scope: toScope(post.scope),
-    sticky: post.sticky === true,
+    // `sticky` is this setting's old name.
+    pinned: (post.pinned ?? post.sticky) === true,
     draft: post.draft === true,
     announcement: post.announcement === true || !!announcementText,
     announcementText,
@@ -215,6 +217,10 @@ export function resolvePostData(
 
 function toLayout(value: unknown): BlogLayout {
   return value === 'grid' || value === 'compact' ? value : 'list';
+}
+
+function toGroupBy(value: unknown): BlogGroupBy {
+  return value === 'year' || value === 'month' ? value : '';
 }
 
 function defaultFeedPath(relativePath: string): string {
@@ -249,7 +255,7 @@ export function resolveFolders(folders: string[], pageRelativePath: string): str
  * Reads the `blog-index` frontmatter value: `true` for the defaults, or an
  * object of settings. Returns `null` when the page is not a blog page.
  * A section blog covers its own folder unless `folders` says otherwise.
- * `pageSize`, `stickyLimit` and `rssLink` fall back to the plugin options.
+ * `pageSize`, `pinLimit` and `rssLink` fall back to the plugin options.
  */
 /** A whole number of at least 0, or `fallback`. */
 function toCount(value: unknown, fallback: number): number {
@@ -259,7 +265,7 @@ function toCount(value: unknown, fallback: number): number {
 export function resolveIndexConfig(
   data: Record<string, unknown>,
   relativePath: string,
-  defaults: Pick<BlogOptions, 'pageSize' | 'stickyLimit' | 'rssLink'> = {},
+  defaults: Pick<BlogOptions, 'pageSize' | 'pinLimit' | 'stickyLimit' | 'rssLink'> = {},
 ): BlogIndexConfig | null {
   const value = data[INDEX_FRONTMATTER_KEY];
   if (!value) return null;
@@ -271,13 +277,17 @@ export function resolveIndexConfig(
     scope,
     folders: folders.length ? resolveFolders(folders, relativePath) : scope === 'section' ? [ownFolder] : [],
     tags: toStringList(options.tags),
+    categories: toStringList(options.categories),
     limit: typeof options.limit === 'number' && options.limit > 0 ? Math.floor(options.limit) : 0,
     layout: toLayout(options.layout),
-    groupByYear: options.groupBy === 'year',
+    groupBy: toGroupBy(options.groupBy),
     showTags: options.showTags !== false,
+    showCategory: options.showCategory !== false,
+    categoryList: options.categoryList !== false,
     tagList: options.tagList !== false,
+    archive: options.archive !== false,
     pageSize: toCount(options.pageSize, toCount(defaults.pageSize, 10)),
-    stickyLimit: toCount(options.stickyLimit, toCount(defaults.stickyLimit, 0)),
+    pinLimit: toCount(options.pinLimit ?? options.stickyLimit, toCount(defaults.pinLimit ?? defaults.stickyLimit, 0)),
     rssLink: typeof options.rssLink === 'boolean' ? options.rssLink : (defaults.rssLink ?? true),
     feed: toFeed(options.feed, relativePath),
   };

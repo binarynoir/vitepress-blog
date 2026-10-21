@@ -57,7 +57,7 @@ export function attachAnnouncements(siteConfig: SiteConfig, options: BlogOptions
 /** The posts in a blog's feed: no drafts, newest first, up to the feed's limit. */
 function listFeedPosts(pages: BlogPage[], index: IndexPage, options: BlogOptions): PostPage[] {
   const limit = index.index.feed?.limit ?? options.feedLimit ?? DEFAULT_FEED_LIMIT;
-  return listBlogPosts(pages, index, { drafts: false, stickyFirst: false, applyLimit: false }).slice(0, limit);
+  return listBlogPosts(pages, index, { drafts: false, pinnedFirst: false, applyLimit: false }).slice(0, limit);
 }
 
 function renderIndexFeed(

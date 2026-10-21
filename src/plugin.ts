@@ -1,6 +1,6 @@
 import type { MarkdownIt, StateCore } from 'markdown-it';
 import path from 'node:path';
-import { findHomeBlog, isIndex, isPost, listBlogPosts, pinStickyPosts } from './collect.js';
+import { findHomeBlog, isIndex, isPost, listBlogPosts, pinPosts } from './collect.js';
 import {
   BLOG_POSTS_PLACEHOLDER,
   createRenderContext,
@@ -49,8 +49,8 @@ function hasFeeds(options: BlogOptions): boolean {
 
 function withPostList(source: string, page: BlogPage, pages: BlogPage[], options: BlogOptions): string {
   if (!isIndex(page)) return source;
-  const posts = listBlogPosts(pages, page, { drafts: options.drafts ?? false, stickyFirst: true, applyLimit: true });
-  const { pinned, rest } = pinStickyPosts(posts, page.index.stickyLimit);
+  const posts = listBlogPosts(pages, page, { drafts: options.drafts ?? false, pinnedFirst: true, applyLimit: true });
+  const { pinned, rest } = pinPosts(posts, page.index.pinLimit);
   const context = createRenderContext(options, path.dirname(page.absolutePath), hasFeeds(options));
   const generated = renderPostList(pinned, rest, page, context);
   return source.includes(BLOG_POSTS_PLACEHOLDER)
@@ -74,7 +74,7 @@ function withPostDecorations(source: string, page: BlogPage, pages: BlogPage[], 
 
   if (page.post.postNav ?? options.postNav ?? true) {
     if (blog) {
-      const posts = listBlogPosts(pages, blog, { drafts, stickyFirst: false, applyLimit: false });
+      const posts = listBlogPosts(pages, blog, { drafts, pinnedFirst: false, applyLimit: false });
       result = `${result.replace(/\s*$/, '')}\n\n${renderPostNav(page, posts, blog, context)}\n`;
     }
   }

@@ -10,6 +10,9 @@
   --vp-blog-tag-bg: var(--vp-c-default-soft);
   --vp-blog-tag-color: var(--vp-c-text-2);
   --vp-blog-accent: var(--vp-c-brand-1);
+  --vp-blog-browse-bg: var(--vp-c-bg-soft);
+  /* Width of the label column in the browse panel, so every row's chips line up. */
+  --vp-blog-facet-label-width: 6.5rem;
   --vp-blog-announcement-height: 40px;
   --vp-blog-announcement-bg: var(--vp-button-brand-bg);
   --vp-blog-announcement-color: var(--vp-button-brand-text);
@@ -46,7 +49,7 @@
   border-color: var(--vp-blog-accent);
 }
 
-.vp-blog-card--sticky {
+.vp-blog-card--pinned {
   border-color: var(--vp-blog-accent);
 }
 
@@ -84,6 +87,28 @@
   flex-direction: column;
   gap: 8px;
   padding: 16px 20px 20px;
+}
+
+/* The category, above the title: a small linked eyebrow. */
+.vp-blog-card__category {
+  margin-bottom: -4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.vp-blog-card .vp-blog-card__category a {
+  color: var(--vp-blog-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vp-blog-card .vp-blog-card__category a:hover,
+.vp-blog-card .vp-blog-card__category a.is-active {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .vp-blog-card__title {
@@ -165,9 +190,11 @@
 }
 
 .vp-blog-tag,
+.vp-blog-category,
 .vp-blog-badge,
-.vp-blog-tags a,
+.vp-blog-facet a,
 .vp-blog-card__tags a,
+.vp-blog-byline__category a,
 .vp-blog-byline__tags a {
   display: inline-block;
   margin: 2px 4px 2px 0;
@@ -180,26 +207,37 @@
   line-height: 22px;
 }
 
-/* Keyword chips are links that filter their blog. */
-.vp-blog .vp-blog-tags a,
+/* Chips are links that filter their blog. */
+.vp-blog .vp-blog-facet a,
 .vp-blog .vp-blog-card__tags a,
+.vp-blog-byline__category a,
 .vp-blog-byline__tags a {
   text-decoration: none;
   transition:
     background-color 0.25s,
-    color 0.25s;
+    color 0.25s,
+    opacity 0.25s;
 }
 
-.vp-blog .vp-blog-tags a:hover,
+.vp-blog .vp-blog-facet a:hover,
 .vp-blog .vp-blog-card__tags a:hover,
+.vp-blog-byline__category a:hover,
 .vp-blog-byline__tags a:hover,
-.vp-blog-tags a.is-active,
-.vp-blog-card__tags a.is-active {
+.vp-blog .vp-blog-facet a.is-active,
+.vp-blog .vp-blog-card__tags a.is-active {
   background: var(--vp-c-brand-soft);
   color: var(--vp-blog-accent);
 }
 
-.vp-blog-badge--sticky {
+/* A post's category in its byline: a chip in the accent, ahead of its keywords. */
+.vp-blog-category,
+.vp-blog-byline__category a {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
+  font-weight: 600;
+}
+
+.vp-blog-badge--pinned {
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
 }
@@ -266,29 +304,53 @@
   }
 }
 
-/* The blog: keyword list, filter banner, pinned posts and page links. */
+/* The blog: browse panel, active filters, pinned posts and page links. */
 .vp-blog {
   scroll-margin-top: calc(var(--vp-nav-height, 64px) + 24px);
 }
 
-.vp-blog-tags {
-  margin: 16px 0 8px;
-  line-height: 2;
+/*
+ * The browse panel: one row each for categories, keywords and years, and the
+ * months of the year in view below the years. Labels sit in a column of their
+ * own on wide screens, above their chips on narrow ones.
+ */
+.vp-blog-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--vp-blog-card-border);
+  border-radius: var(--vp-blog-card-radius);
+  background: var(--vp-blog-browse-bg);
 }
 
-.vp-blog-tags p {
+.vp-blog-facet {
+  display: grid;
+  grid-template-columns: var(--vp-blog-facet-label-width) minmax(0, 1fr);
+  gap: 2px 12px;
+  align-items: baseline;
+}
+
+.vp-blog-facet__label {
+  color: var(--vp-blog-meta-color);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+/* A year's months: tucked under the years, their label the year. */
+.vp-blog-facet--month .vp-blog-facet__label {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.vp-blog-facet__chips p {
   margin: 0;
 }
 
-.vp-blog-tags__label {
-  margin-right: 8px;
-  color: var(--vp-blog-meta-color);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* The post count in a keyword pill: a small counter badge inside it. */
-.vp-blog-tags__count {
+/* The post count in a chip: a small counter badge inside it. */
+.vp-blog-facet__count {
   display: inline-block;
   min-width: 18px;
   margin-left: 6px;
@@ -307,14 +369,38 @@
     color 0.25s;
 }
 
-.vp-blog-tags a:hover .vp-blog-tags__count,
-.vp-blog-tags a.is-active .vp-blog-tags__count {
+.vp-blog-facet a:hover .vp-blog-facet__count,
+.vp-blog-facet a.is-active .vp-blog-facet__count {
   background: var(--vp-blog-accent);
   /* The page background, so the number stays readable on the accent in light and dark mode. */
   color: var(--vp-c-bg);
 }
 
+/* A chip that would show no posts with the other filters kept. */
+.vp-blog .vp-blog-facet a.is-empty {
+  opacity: 0.45;
+}
+
+.vp-blog .vp-blog-facet a.is-empty:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 639px) {
+  .vp-blog-facet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vp-blog-facet__label {
+    line-height: 20px;
+  }
+}
+
+/* The active filters: how many posts match, a removable chip for each filter, and a link to clear them all. */
 .vp-blog-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   margin: 16px 0;
   padding: 10px 16px;
   border-radius: 8px;
@@ -322,15 +408,61 @@
   font-size: 14px;
 }
 
-.vp-blog-filter__clear {
-  margin-left: 8px;
+.vp-blog-filter__count {
+  margin-right: 4px;
+  color: var(--vp-c-text-1);
+  font-weight: 600;
 }
 
-.vp-blog-sticky {
+.vp-blog .vp-blog-filter__chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--vp-blog-accent);
+  border-radius: 999px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 24px;
+  text-decoration: none;
+}
+
+.vp-blog-filter__kind {
+  color: var(--vp-blog-meta-color);
+  font-weight: 400;
+}
+
+.vp-blog-filter__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--vp-blog-meta-color);
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
+}
+
+.vp-blog .vp-blog-filter__chip:hover .vp-blog-filter__remove {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
+}
+
+.vp-blog-filter__clear {
+  margin-left: auto;
+}
+
+.vp-blog-pinned {
   margin: 24px 0;
 }
 
-.vp-blog-sticky .vp-blog-list {
+.vp-blog-pinned .vp-blog-list {
   margin: 0;
 }
 

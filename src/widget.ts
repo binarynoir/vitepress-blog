@@ -1,6 +1,14 @@
 import path from 'node:path';
 import { parse } from 'yaml';
-import { findBlogForPage, isIndex, listBlogPosts, pinStickyPosts, type IndexPage } from './collect.js';
+import {
+  findBlogForPage,
+  hasAnyTag,
+  inAnyCategory,
+  isIndex,
+  listBlogPosts,
+  pinPosts,
+  type IndexPage,
+} from './collect.js';
 import { toStringList } from './frontmatter.js';
 import { renderGroup, renderRssLink, type RenderContext } from './render.js';
 import type { BlogPage } from './scan.js';
@@ -24,10 +32,12 @@ export interface WidgetConfig {
   /** As written: a blog page's URL (`/blog/`) or file (`blog/index.md`), `./` and `../` page-relative. */
   blog: string;
   limit: number;
-  stickyLimit: number;
+  pinLimit: number;
   layout: BlogLayout;
   showTags: boolean;
+  showCategory: boolean;
   tags: string[];
+  categories: string[];
   /** Text of the link to the blog page, or `null` for none. */
   more: string | null;
   /** Show a "Subscribe" link to the blog's feed. */
@@ -73,8 +83,8 @@ export function findWidgetBlog(pages: BlogPage[], blog: string, pageRelativePath
 }
 
 /** A block's settings as written: the ones left out fall back to its blog page's. */
-export type WidgetSettings = Omit<WidgetConfig, 'stickyLimit' | 'layout' | 'showTags' | 'rssLink'> &
-  Partial<Pick<WidgetConfig, 'stickyLimit' | 'layout' | 'showTags' | 'rssLink'>>;
+type InheritedSetting = 'pinLimit' | 'layout' | 'showTags' | 'showCategory' | 'rssLink';
+export type WidgetSettings = Omit<WidgetConfig, InheritedSetting> & Partial<Pick<WidgetConfig, InheritedSetting>>;
 
 /** Reads a block's YAML body. Values it can't use are left to the defaults. */
 export function resolveWidgetConfig(body: string): { config: WidgetSettings; problem?: string } {
@@ -91,10 +101,13 @@ export function resolveWidgetConfig(body: string): { config: WidgetSettings; pro
     config: {
       blog: typeof data.blog === 'string' ? data.blog.trim() : '',
       limit: toCount(data.limit) ?? DEFAULT_LIMIT,
-      stickyLimit: toCount(data.stickyLimit),
+      // `stickyLimit` is this setting's old name.
+      pinLimit: toCount(data.pinLimit ?? data.stickyLimit),
       layout,
       showTags: typeof data.showTags === 'boolean' ? data.showTags : undefined,
+      showCategory: typeof data.showCategory === 'boolean' ? data.showCategory : undefined,
       tags: toStringList(data.tags),
+      categories: toStringList(data.categories),
       more: data.more === false ? null : typeof data.more === 'string' && data.more.trim() ? data.more.trim() : '',
       rssLink: typeof data.rssLink === 'boolean' ? data.rssLink : undefined,
     },
@@ -124,21 +137,21 @@ export function renderWidget(body: string, environment: WidgetEnvironment): stri
     return '';
   }
 
-  const stickyLimit = config.stickyLimit ?? blog.index.stickyLimit;
-  const wanted = new Set(config.tags.map((tag) => tag.toLowerCase()));
-  const posts = listBlogPosts(pages, blog, { drafts, stickyFirst: false, applyLimit: false }).filter(
-    (post) => wanted.size === 0 || post.post.tags.some((tag) => wanted.has(tag.toLowerCase())),
+  const pinLimit = config.pinLimit ?? blog.index.pinLimit;
+  const posts = listBlogPosts(pages, blog, { drafts, pinnedFirst: false, applyLimit: false }).filter(
+    (post) => hasAnyTag(post, config.tags) && inAnyCategory(post, config.categories),
   );
-  const { pinned, rest } = pinStickyPosts(posts, stickyLimit);
+  const { pinned, rest } = pinPosts(posts, pinLimit);
   const shown = [...pinned, ...rest].slice(0, config.limit || undefined);
 
-  // The block's own settings over the blog page's; keyword chips still link to the blog page.
+  // The block's own settings over the blog page's; category and keyword links still go to the blog page.
   const view: IndexPage = {
     ...blog,
     index: {
       ...blog.index,
       layout: config.layout ?? blog.index.layout,
       showTags: config.showTags ?? blog.index.showTags,
+      showCategory: config.showCategory ?? blog.index.showCategory,
     },
   };
 

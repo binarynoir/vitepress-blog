@@ -25,10 +25,18 @@ function folderDepth(index: IndexPage): number {
   return Math.max(0, ...index.index.folders.map((folder) => (folder ? folder.split('/').length : 0)));
 }
 
-function hasAnyTag(post: PostPage, tags: string[]): boolean {
+/** Whether the post has one of `tags`, in any case. No tags means any post. */
+export function hasAnyTag(post: PostPage, tags: string[]): boolean {
   if (tags.length === 0) return true;
   const wanted = new Set(tags.map((tag) => tag.toLowerCase()));
   return post.post.tags.some((tag) => wanted.has(tag.toLowerCase()));
+}
+
+/** Whether the post is in one of `categories`, in any case. No categories means any post. */
+export function inAnyCategory(post: PostPage, categories: string[]): boolean {
+  if (categories.length === 0) return true;
+  const category = post.post.category.toLowerCase();
+  return !!category && categories.some((wanted) => wanted.toLowerCase() === category);
 }
 
 /**
@@ -60,19 +68,19 @@ export function compareByDate(a: PostPage, b: PostPage): number {
 export interface ListOptions {
   /** Include `draft: true` posts. */
   drafts: boolean;
-  /** Pin `sticky: true` posts to the top, up to the blog's `stickyLimit`. */
-  stickyFirst: boolean;
+  /** Put `pinned: true` posts at the top, up to the blog's `pinLimit`. */
+  pinnedFirst: boolean;
   /** Apply the blog's `limit`. */
   applyLimit: boolean;
 }
 
 /**
- * Splits date-ordered posts into the sticky ones pinned to the top (the
- * newest `limit` of them, or all with `0`) and the rest, still in date order.
+ * Splits date-ordered posts into the pinned ones kept at the top (the newest
+ * `limit` of them, or all with `0`) and the rest, still in date order.
  */
-export function pinStickyPosts(posts: PostPage[], limit: number): { pinned: PostPage[]; rest: PostPage[] } {
-  const sticky = posts.filter((post) => post.post.sticky);
-  const pinned = new Set(limit ? sticky.slice(0, limit) : sticky);
+export function pinPosts(posts: PostPage[], limit: number): { pinned: PostPage[]; rest: PostPage[] } {
+  const candidates = posts.filter((post) => post.post.pinned);
+  const pinned = new Set(limit ? candidates.slice(0, limit) : candidates);
   return { pinned: [...pinned], rest: posts.filter((post) => !pinned.has(post)) };
 }
 
@@ -83,9 +91,10 @@ export function listBlogPosts(pages: BlogPage[], index: IndexPage, options: List
     .filter(isPost)
     .filter((post) => options.drafts || !post.post.draft)
     .filter((post) => blogCoversPost(index, post, sections) && hasAnyTag(post, index.index.tags))
+    .filter((post) => inAnyCategory(post, index.index.categories))
     .sort(compareByDate);
-  if (options.stickyFirst) {
-    const { pinned, rest } = pinStickyPosts(posts, index.index.stickyLimit);
+  if (options.pinnedFirst) {
+    const { pinned, rest } = pinPosts(posts, index.index.pinLimit);
     posts = [...pinned, ...rest];
   }
   return options.applyLimit && index.index.limit ? posts.slice(0, index.index.limit) : posts;
@@ -98,7 +107,7 @@ export function listBlogPosts(pages: BlogPage[], index: IndexPage, options: List
 export function findHomeBlog(pages: BlogPage[], post: PostPage, drafts: boolean): IndexPage | null {
   const listing = pages
     .filter(isIndex)
-    .filter((index) => listBlogPosts(pages, index, { drafts, stickyFirst: false, applyLimit: false }).includes(post));
+    .filter((index) => listBlogPosts(pages, index, { drafts, pinnedFirst: false, applyLimit: false }).includes(post));
   const sections = listing.filter((index) => index.index.scope === 'section');
   if (sections.length) return deepestFirst(sections, post.relativePath)[0];
   return listing[0] ?? null;
@@ -130,7 +139,7 @@ export function findBlogsListing(pages: BlogPage[], post: PostPage): IndexPage[]
   return pages
     .filter(isIndex)
     .filter((index) =>
-      listBlogPosts(pages, index, { drafts: false, stickyFirst: false, applyLimit: false }).includes(post),
+      listBlogPosts(pages, index, { drafts: false, pinnedFirst: false, applyLimit: false }).includes(post),
     );
 }
 
@@ -150,7 +159,7 @@ export function listAnnouncements(pages: BlogPage[], drafts: boolean): PostPage[
 export function findAnnouncementBlog(pages: BlogPage[], announcements: PostPage[], drafts: boolean): IndexPage | null {
   if (announcements.length === 0) return null;
   const listingAll = pages.filter(isIndex).filter((index) => {
-    const listed = listBlogPosts(pages, index, { drafts, stickyFirst: false, applyLimit: false });
+    const listed = listBlogPosts(pages, index, { drafts, pinnedFirst: false, applyLimit: false });
     return announcements.every((post) => listed.includes(post));
   });
   return (

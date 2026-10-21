@@ -107,7 +107,7 @@ function toOptionsKey(options: BlogOptions): string {
     options.wordsPerMinute,
     options.stripTags,
     options.pageSize,
-    options.stickyLimit,
+    options.pinLimit ?? options.stickyLimit,
     options.rssLink,
     options.timeZone,
   ]);

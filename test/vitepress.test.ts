@@ -188,7 +188,7 @@ describe('a real VitePress build', () => {
       expect(blogPage).toContain('<span>The first post, with a {{ brace }} in it.</span>');
       // Keyword links keep their query string through VitePress's link handling.
       expect(blogPage).toContain('<a href="/blog/?tag=news">news</a>');
-      expect(blogPage).toContain('data-vp-blog-sticky');
+      expect(blogPage).toContain('data-vp-blog-pinned');
       // The Subscribe link to the blog's own feed, with VitePress's link handling.
       expect(blogPage).toMatch(/<span class="vp-blog-rss"><a href="\/blog\/feed.xml" title="RSS feed for Blog">/);
 

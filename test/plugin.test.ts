@@ -95,7 +95,7 @@ describe('blog pages', () => {
     expect(html).toMatch(/<h2>2026<\/h2>[\s\S]*<h2>2025<\/h2>|<h2>2026<\/h2>/);
     expect(html).toContain('vp-blog-list--compact');
     expect(html).toMatch(
-      /<li><span hidden data-vp-blog-item data-tags=""><\/span><time datetime="2026-02-20">February 20, 2026<\/time> <a href="\/news\/second.md">Second<\/a><\/li>/,
+      /<li><span hidden data-vp-blog-item data-tags="" data-month="2026-02"><\/span><time datetime="2026-02-20">February 20, 2026<\/time> <a href="\/news\/second.md">Second<\/a><\/li>/,
     );
   });
 

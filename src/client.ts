@@ -7,7 +7,7 @@ import { nextTick, onMounted, watch } from 'vue';
 import { applyBlogViews } from './view.js';
 
 /**
- * Turns on keyword filtering (`?tag=`) and pagination (`?page=`) on blog
+ * Turns on filtering (`?category=`, `?tag=`, `?year=`, `?month=`) and pagination (`?page=`) on blog
  * pages. Call it from your theme's `setup()`:
  *
  * ```ts
@@ -24,7 +24,7 @@ import { applyBlogViews } from './view.js';
  * };
  * ```
  *
- * Keyword and page links are ordinary links: VitePress's router follows them
+ * Filter and page links are ordinary links: VitePress's router follows them
  * without reloading the page, and this re-applies the view whenever the path
  * or query string changes. It runs after the page has hydrated, so the
  * server-rendered HTML (every post) and the first client render agree.
@@ -42,4 +42,4 @@ export function useBlog(): void {
 }
 
 export { BlogAnnouncementBanner } from './banner.js';
-export { applyBlogView, applyBlogViews, type BlogViewState } from './view.js';
+export { applyBlogView, applyBlogViews, readFilter, type BlogFilter, type BlogViewState } from './view.js';
