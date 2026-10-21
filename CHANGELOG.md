@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-21
+
 ### Changed
 
 - Posts with newer / older links no longer also show VitePress's previous / next links, which follow the sidebar rather than the post dates. A post's own `prev` / `next` frontmatter still wins, and `postNav: false` brings VitePress's links back
