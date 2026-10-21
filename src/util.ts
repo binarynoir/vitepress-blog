@@ -55,3 +55,12 @@ export function toUrlPath(routePath: string, cleanUrls: boolean): string {
 export function joinUrl(base: string, urlPath: string): string {
   return `${base.replace(/\/+$/, '')}/${urlPath.replace(/^\/+/, '')}`;
 }
+
+/** Where the announcement banner's data sits on VitePress's site data: `useData().site.value.blogAnnouncements`. */
+export const ANNOUNCEMENTS_KEY = 'blogAnnouncements';
+
+/** The `localStorage` key holding the ids of the announcements a visitor dismissed, as a JSON array. */
+export const DISMISSED_STORAGE_KEY = 'vp-blog-announcements-dismissed';
+
+/** The class on `<html>` that hides a dismissed banner before the page hydrates. */
+export const DISMISSED_CLASS = 'vp-blog-announcement-dismissed';

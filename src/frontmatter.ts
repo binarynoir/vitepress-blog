@@ -186,6 +186,7 @@ export function resolvePostData(
   const timeZone = resolveTimeZone(options.timeZone);
   const date = parsePostDate(pick('date'), timeZone);
   const updated = parsePostDate(pick('updated'), timeZone);
+  const announcementText = typeof post.announcement === 'string' ? clean(post.announcement.trim()) : '';
   return {
     title: clean(toText(post.title) || toText(data.title) || readHeading(content)) || fallbackTitle,
     summary: clean(toText(post.summary) || toText(data.description) || readExcerpt(content)),
@@ -203,6 +204,8 @@ export function resolvePostData(
     scope: toScope(post.scope),
     sticky: post.sticky === true,
     draft: post.draft === true,
+    announcement: post.announcement === true || !!announcementText,
+    announcementText,
     byline: toBoolean(post.byline),
     cover: toBoolean(post.cover),
     postNav: toBoolean(post.postNav),

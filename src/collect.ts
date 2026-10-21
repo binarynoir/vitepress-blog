@@ -133,3 +133,29 @@ export function findBlogsListing(pages: BlogPage[], post: PostPage): IndexPage[]
       listBlogPosts(pages, index, { drafts: false, stickyFirst: false, applyLimit: false }).includes(post),
     );
 }
+
+/** Every announcement, newest first. Drafts only with `drafts`. */
+export function listAnnouncements(pages: BlogPage[], drafts: boolean): PostPage[] {
+  return pages
+    .filter(isPost)
+    .filter((post) => post.post.announcement && (drafts || !post.post.draft))
+    .sort(compareByDate);
+}
+
+/**
+ * The blog page the banner's count badge opens, filtered to announcements: a
+ * blog page that lists all of them (the main blog first), else the newest
+ * one's own blog.
+ */
+export function findAnnouncementBlog(pages: BlogPage[], announcements: PostPage[], drafts: boolean): IndexPage | null {
+  if (announcements.length === 0) return null;
+  const listingAll = pages.filter(isIndex).filter((index) => {
+    const listed = listBlogPosts(pages, index, { drafts, stickyFirst: false, applyLimit: false });
+    return announcements.every((post) => listed.includes(post));
+  });
+  return (
+    listingAll.find((index) => index.index.scope === 'site') ??
+    listingAll[0] ??
+    findHomeBlog(pages, announcements[0], drafts)
+  );
+}

@@ -11,9 +11,9 @@ beforeAll(() => {
   const posts: [string, string, string[]][] = [
     ['one', '2026-05-01', ['  sticky: true', '  tags: [release]']],
     ['two', '2026-04-01', ['  tags: [release, api]']],
-    ['three', '2026-03-01', ['  tags: [api]']],
-    ['four', '2026-02-01', ['  tags: [release]']],
-    ['five', '2025-01-01', ['  tags: [release]']],
+    ['three', '2026-03-01', ['  tags: [api]', '  announcement: true']],
+    ['four', '2026-02-01', ['  tags: [release]', '  announcement: true']],
+    ['five', '2025-01-01', ['  tags: [release]', '  announcement: true']],
   ];
   for (const [name, date, extra] of posts) {
     site.write(`news/${name}.md`, frontmatter(['blog:', `  date: ${date}`, ...extra], `# ${name}\n`));
@@ -36,7 +36,7 @@ const shown = () =>
 
 describe('pagination', () => {
   it('shows the pinned post and the first page', () => {
-    expect(view('')).toEqual({ tag: '', page: 1, pageCount: 2 });
+    expect(view('')).toEqual({ tag: '', announcements: false, page: 1, pageCount: 2 });
     expect(shown()).toEqual(['one', 'two', 'three']);
   });
 
@@ -106,5 +106,31 @@ describe('keyword filter', () => {
     view('');
     expect(document.querySelector<HTMLElement>('[data-vp-blog-filter]')!.hidden).toBe(true);
     expect(document.querySelectorAll('.vp-blog-tags a.is-active')).toHaveLength(0);
+  });
+});
+
+describe('announcements filter', () => {
+  const filter = () => document.querySelector<HTMLElement>('[data-vp-blog-filter]')!;
+
+  it('shows only announcements, paginated, and says so', () => {
+    expect(view('?announcements')).toEqual({ tag: '', announcements: true, page: 1, pageCount: 2 });
+    expect(shown()).toEqual(['three', 'four']);
+    expect(filter().textContent).toContain('Announcements');
+    expect(filter().querySelector('a')!.getAttribute('href')).toBe('/news/');
+    const pages = [...document.querySelectorAll('[data-vp-blog-pagination] a')].map((a) => a.getAttribute('href'));
+    expect(pages).toEqual(['/news/?announcements&page=2', '/news/?announcements&page=2']);
+  });
+
+  it('combines with a keyword', () => {
+    view('?announcements&tag=api');
+    expect(shown()).toEqual(['three']);
+    expect(filter().textContent).toContain('Announcements · Posts tagged api');
+  });
+
+  it('says so when there are none', () => {
+    document.querySelectorAll('[data-announcement]').forEach((marker) => marker.removeAttribute('data-announcement'));
+    view('?announcements');
+    expect(shown()).toEqual([]);
+    expect(filter().textContent).toContain('No announcements.');
   });
 });

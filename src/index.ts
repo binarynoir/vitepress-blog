@@ -4,6 +4,8 @@ export { WIDGET_NAME } from './widget.js';
 export { INDEX_FRONTMATTER_KEY, POST_FRONTMATTER_KEY } from './frontmatter.js';
 export { DEFAULT_LABELS } from './types.js';
 export type {
+  BlogAnnouncementData,
+  BlogAnnouncementItem,
   BlogAuthor,
   BlogFeedConfig,
   BlogIndexConfig,

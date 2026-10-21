@@ -155,6 +155,7 @@ blog:
 | `category`      | none                                       | Written to the feed and `article:section`.                                                                                                                |
 | `scope`         | `section`                                  | `site` (or `global`) also lists the post on the main blog. See [Scopes](#scopes).                                                                         |
 | `sticky`        | `false`                                    | Pinned to the top of its blog pages, above the paginated posts, with a Pinned badge. See [Sticky posts](#sticky-posts).                                   |
+| `announcement`  | `false`                                    | `true`, or the banner's text, shows the post in the announcement banner above the nav bar. See [Announcements](#announcements).                           |
 | `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: to leave drafts out of the build, the sidebar and the navbar too, see [Drafts](#drafts).     |
 | `byline`        | the `byline` option                        | `false` hides this post's byline.                                                                                                                         |
 | `cover`         | the `cover` option                         | `true` shows this post's image under its byline.                                                                                                          |
@@ -299,6 +300,57 @@ a blog page, on each card, and in a post's byline, where they link to the
 post's own blog, filtered. They are ordinary links, so VitePress follows them
 without reloading the page, and each filtered view has its own URL to share.
 
+## Announcements
+
+`announcement: true` puts a post in a banner across the top of every page,
+above the nav bar: one line, the full width of the window, linked to the post.
+A string sets the banner's text instead of the post's title.
+
+```md
+---
+blog:
+  date: 2026-10-20 09:00
+  announcement: Scheduled maintenance on Friday, 18:00 UTC
+---
+```
+
+Add the banner to your theme's `layout-top` slot:
+
+```ts
+// .vitepress/theme/index.ts
+import { h } from 'vue';
+import DefaultTheme from 'vitepress/theme';
+import { BlogAnnouncementBanner, useBlog } from '@binarynoir/vitepress-blog/client';
+import '@binarynoir/vitepress-blog/style.css';
+
+export default {
+  extends: DefaultTheme,
+  Layout: () => h(DefaultTheme.Layout, null, { 'layout-top': () => h(BlogAnnouncementBanner) }),
+  setup() {
+    useBlog();
+  },
+};
+```
+
+- **The newest one wins.** With several, the banner shows the newest and a
+  badge with how many there are. The badge opens a blog page filtered to
+  announcements (`/blog/?announcements`): the main blog when it lists them all,
+  else another blog page that does, else the newest one's own blog.
+- **Visitors can clear it.** The close button dismisses every current
+  announcement, remembered in the browser. A newer one brings the banner back,
+  and its badge counts only the ones not yet dismissed. Changing a post's
+  `date` announces it again.
+- **No jump on load.** The banner is rendered on the server, and a small
+  `<head>` script hides it before the page shows if the visitor dismissed it.
+  While it shows, it sets VitePress's `--vp-layout-top-height`, so the nav bar,
+  sidebar and content move down to make room.
+- Announcements are marked on blog pages with an Announcement badge. Drafts
+  are only announced with the `drafts` option.
+
+The banner reads its posts from VitePress's site data, which `withBlog` (or
+`blogVitePlugin`) fills in; `blogVitePlugin` also has Vite bundle this package
+for the server-side build, so the banner renders there.
+
 ## Latest posts on any page
 
 A `::: blog-posts` block shows a blog's latest posts anywhere: on the home
@@ -430,6 +482,11 @@ withBlog(config, {
     allPosts: 'Alle Beiträge in {blog}',
     draft: 'Entwurf',
     sticky: 'Angeheftet',
+    announcement: 'Ankündigung',
+    announcements: 'Ankündigungen',
+    noAnnouncements: 'Keine Ankündigungen.',
+    announcementCount: '{n} Ankündigungen',
+    dismiss: 'Schließen',
     noPosts: 'Noch keine Beiträge.',
     undated: 'Ohne Datum',
     tags: 'Schlagwörter',
@@ -450,15 +507,18 @@ withBlog(config, {
 `style.css` uses VitePress's theme variables, so it follows light and dark
 mode. Override these to restyle it without new rules:
 
-| Variable                | Default                    |
-| ----------------------- | -------------------------- |
-| `--vp-blog-card-bg`     | `var(--vp-c-bg-soft)`      |
-| `--vp-blog-card-border` | `var(--vp-c-divider)`      |
-| `--vp-blog-card-radius` | `12px`                     |
-| `--vp-blog-meta-color`  | `var(--vp-c-text-2)`       |
-| `--vp-blog-tag-bg`      | `var(--vp-c-default-soft)` |
-| `--vp-blog-tag-color`   | `var(--vp-c-text-2)`       |
-| `--vp-blog-accent`      | `var(--vp-c-brand-1)`      |
+| Variable                        | Default                       |
+| ------------------------------- | ----------------------------- |
+| `--vp-blog-card-bg`             | `var(--vp-c-bg-soft)`         |
+| `--vp-blog-card-border`         | `var(--vp-c-divider)`         |
+| `--vp-blog-card-radius`         | `12px`                        |
+| `--vp-blog-meta-color`          | `var(--vp-c-text-2)`          |
+| `--vp-blog-tag-bg`              | `var(--vp-c-default-soft)`    |
+| `--vp-blog-tag-color`           | `var(--vp-c-text-2)`          |
+| `--vp-blog-accent`              | `var(--vp-c-brand-1)`         |
+| `--vp-blog-announcement-height` | `40px`                        |
+| `--vp-blog-announcement-bg`     | `var(--vp-button-brand-bg)`   |
+| `--vp-blog-announcement-color`  | `var(--vp-button-brand-text)` |
 
 Every generated element has a `vp-blog-` class (`vp-blog-card`,
 `vp-blog-byline`, `vp-blog-post-nav`, …) for anything more.

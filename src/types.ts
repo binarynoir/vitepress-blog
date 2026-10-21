@@ -96,6 +96,16 @@ export interface BlogLabels {
   draft: string;
   /** Badge on a sticky post. */
   sticky: string;
+  /** Badge on an announcement, and the accessible name of the announcement banner. */
+  announcement: string;
+  /** Above a blog page filtered to announcements (`?announcements`). */
+  announcements: string;
+  /** When the blog page has no announcements to show. */
+  noAnnouncements: string;
+  /** Tooltip of the banner's count badge: "{n} announcements". */
+  announcementCount: string;
+  /** Accessible name of the banner's close button. */
+  dismiss: string;
   noPosts: string;
   /** Year heading for posts without a date, when a blog groups by year. */
   undated: string;
@@ -128,6 +138,11 @@ export const DEFAULT_LABELS: BlogLabels = {
   allPosts: 'All posts in {blog}',
   draft: 'Draft',
   sticky: 'Pinned',
+  announcement: 'Announcement',
+  announcements: 'Announcements',
+  noAnnouncements: 'No announcements.',
+  announcementCount: '{n} announcements',
+  dismiss: 'Dismiss',
   noPosts: 'No posts yet.',
   undated: 'Undated',
   tags: 'Keywords',
@@ -203,9 +218,31 @@ export interface BlogPostData {
   scope: BlogScope;
   sticky: boolean;
   draft: boolean;
+  /** Shown in the announcement banner above the nav bar. */
+  announcement: boolean;
+  /** The banner's text, from `announcement: "…"`. `''` uses the title. */
+  announcementText: string;
   /** Per-post overrides of the `byline`, `cover` and `postNav` options. */
   byline?: boolean;
   cover?: boolean;
   postNav?: boolean;
   readingMinutes: number;
+}
+
+/** One announcement, as the banner shows it. */
+export interface BlogAnnouncementItem {
+  /** The post's path and date: what a dismissal remembers, so re-dating a post announces it again. */
+  id: string;
+  text: string;
+  /** The post's URL path, without the site's base. */
+  link: string;
+}
+
+/** What the announcement banner reads from VitePress's site data. */
+export interface BlogAnnouncementData {
+  /** Newest first: the banner shows the first one that hasn't been dismissed. */
+  items: BlogAnnouncementItem[];
+  /** The blog page filtered to announcements (`/blog/?announcements`), without the base, or `''` when no blog lists them. */
+  listLink: string;
+  labels: Pick<BlogLabels, 'announcement' | 'announcementCount' | 'dismiss'>;
 }

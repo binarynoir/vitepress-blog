@@ -202,6 +202,15 @@ describe('a real VitePress build', () => {
       expect(home).toContain('<a href="/team-a/launch">We launched</a>');
       expect(home).toContain('<a href="/blog/">Everything on the blog</a>');
 
+      // The announcement banner, rendered on the server above the nav bar: the newest, and a count of both.
+      expect(home).toMatch(
+        /<div class="vp-blog-announcement" role="region" aria-label="Announcement"><div class="vp-blog-announcement__content"><a class="vp-blog-announcement__text" href="\/team-a\/launch">Team A shipped the thing<\/a><a class="vp-blog-announcement__count" href="\/blog\/\?announcements" title="2 announcements" aria-label="2 announcements">2<\/a>/,
+      );
+      expect(home.indexOf('vp-blog-announcement"')).toBeLessThan(home.indexOf('class="VPNav'));
+      // VitePress minifies the script, so its quotes may change.
+      expect(home).toMatch(/<script data-vp-blog-announcement="">try\{.*team-a\/launch\.md@2026-10-01T00:00:00\.000Z/);
+      expect(blogPage.match(/ data-announcement>/g)).toHaveLength(2);
+
       const post = readFileSync(path.join(out, 'team-a/launch.html'), 'utf8');
       expect(post).toContain('<meta property="og:type" content="article">');
       expect(post).toContain('class="vp-blog-byline"');

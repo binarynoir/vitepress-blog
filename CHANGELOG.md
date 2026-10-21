@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Announcements: `announcement: true` (or the banner's text) on a post puts it in a one-line, full-width banner above the nav bar on every page. With several, the newest shows with a count badge that opens the blog page filtered to announcements. Visitors can dismiss it; a newer announcement brings it back
+- `BlogAnnouncementBanner` component from `@binarynoir/vitepress-blog/client`, for the theme's `layout-top` slot
+- `?announcements` filter on blog pages, and an Announcement badge on announced posts
+- `announcement`, `announcements`, `noAnnouncements`, `announcementCount` and `dismiss` labels
+
+### Changed
+
+- `blogVitePlugin` has Vite bundle this package for the server-side build (`ssr.noExternal`), so the banner can render on the server
+
 ## [0.2.0] - 2026-10-20
 
 ### Added

@@ -41,4 +41,5 @@ export function useBlog(): void {
   vitepress.onContentUpdated(apply);
 }
 
+export { BlogAnnouncementBanner } from './banner.js';
 export { applyBlogView, applyBlogViews, type BlogViewState } from './view.js';

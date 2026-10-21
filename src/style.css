@@ -10,6 +10,9 @@
   --vp-blog-tag-bg: var(--vp-c-default-soft);
   --vp-blog-tag-color: var(--vp-c-text-2);
   --vp-blog-accent: var(--vp-c-brand-1);
+  --vp-blog-announcement-height: 40px;
+  --vp-blog-announcement-bg: var(--vp-button-brand-bg);
+  --vp-blog-announcement-color: var(--vp-button-brand-text);
 }
 
 /* Markdown inside the generated blocks is wrapped in <p>; its margins are handled here instead. */
@@ -199,6 +202,11 @@
 .vp-blog-badge--sticky {
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
+}
+
+.vp-blog-badge--announcement {
+  background: var(--vp-c-tip-soft);
+  color: var(--vp-c-tip-1);
 }
 
 .vp-blog-badge--draft {
@@ -415,4 +423,109 @@
 .vp-blog-rss__icon {
   /* The RSS orange, as feed readers expect. */
   color: #f26522;
+}
+
+/*
+ * The announcement banner, in the theme's `layout-top` slot: fixed across the
+ * top of the window, one line high. While it shows, VitePress's
+ * --vp-layout-top-height moves the nav bar, sidebar and content down by its
+ * height. The class on <html> hides it before hydration once dismissed.
+ */
+:root:not(.vp-blog-announcement-dismissed):has(.vp-blog-announcement) {
+  --vp-layout-top-height: var(--vp-blog-announcement-height);
+}
+
+.vp-blog-announcement-dismissed .vp-blog-announcement {
+  display: none;
+}
+
+.vp-blog-announcement {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: var(--vp-z-index-layout-top);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--vp-blog-announcement-height);
+  padding: 0 48px;
+  background: var(--vp-blog-announcement-bg);
+  color: var(--vp-blog-announcement-color);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: var(--vp-blog-announcement-height);
+}
+
+.vp-blog-announcement__content {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.vp-blog-announcement__text {
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vp-blog-announcement__text:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* How many announcements there are: a counter pill that opens the list of them. */
+.vp-blog-announcement__count {
+  flex: none;
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--vp-blog-announcement-color);
+  color: var(--vp-blog-announcement-bg);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity 0.25s;
+}
+
+a.vp-blog-announcement__count:hover {
+  opacity: 0.85;
+}
+
+.vp-blog-announcement__dismiss {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: inherit;
+  opacity: 0.8;
+  transform: translateY(-50%);
+  transition:
+    background-color 0.25s,
+    opacity 0.25s;
+}
+
+.vp-blog-announcement__dismiss:hover {
+  background: rgba(255, 255, 255, 0.16);
+  opacity: 1;
+}
+
+@media (max-width: 639px) {
+  .vp-blog-announcement {
+    justify-content: flex-start;
+    padding: 0 48px 0 16px;
+  }
 }

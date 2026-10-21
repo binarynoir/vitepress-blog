@@ -1,8 +1,9 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { MarkdownIt } from 'markdown-it';
-import type { Plugin } from 'vite';
+import type { Plugin, ViteDevServer } from 'vite';
 import type { HeadConfig, PageData, SiteConfig, TransformContext, TransformPageContext, UserConfig } from 'vitepress';
+import { renderDismissedScript, resolveAnnouncements } from './announcements.js';
 import { findBlogsListing, isIndex, isPost, listBlogPosts, type IndexPage, type PostPage } from './collect.js';
 import { mayHaveBlogFrontmatter } from './frontmatter.js';
 import { renderFeed, resolvePostImage, toFeedPath, toPageUrl, type SiteLocation } from './feed.js';
@@ -10,9 +11,14 @@ import { blogMarkdown } from './plugin.js';
 import { hasWidget, widgetPages } from './widget.js';
 import { fingerprintBlogSource, loadBlogPages, type BlogPage } from './scan.js';
 import type { BlogOptions } from './types.js';
-import { joinUrl } from './util.js';
+import { ANNOUNCEMENTS_KEY, joinUrl } from './util.js';
 
 const DEFAULT_FEED_LIMIT = 20;
+const PACKAGE_NAME = '@binarynoir/vitepress-blog';
+// VitePress's id for the module that serves the site data to the browser.
+const SITE_DATA_MODULE = '/@siteData';
+// Marks the `<head>` script this adds, so it is replaced rather than added twice.
+const SCRIPT_MARKER = 'data-vp-blog-announcement';
 
 /** Where the site is published, or `null` without a site URL: feeds need absolute links. */
 export function resolveSiteLocation(siteConfig: SiteConfig, options: BlogOptions): SiteLocation | null {
@@ -29,6 +35,23 @@ export function resolveSiteLocation(siteConfig: SiteConfig, options: BlogOptions
 
 function loadPages(siteConfig: SiteConfig, options: BlogOptions): BlogPage[] {
   return loadBlogPages(siteConfig.srcDir, options, siteConfig);
+}
+
+/**
+ * Puts the announcement banner's data on VitePress's site data, where
+ * `useData().site` reads it on every page, and adds the `<head>` script that
+ * hides a dismissed banner before the page hydrates. Returns whether the
+ * data changed.
+ */
+export function attachAnnouncements(siteConfig: SiteConfig, options: BlogOptions = {}): boolean {
+  const site = siteConfig.site as SiteConfig['site'] & Record<string, unknown>;
+  const data = resolveAnnouncements(loadPages(siteConfig, options), options, !!siteConfig.cleanUrls);
+  const changed = JSON.stringify(site[ANNOUNCEMENTS_KEY] ?? null) !== JSON.stringify(data);
+  if (data) site[ANNOUNCEMENTS_KEY] = data;
+  else delete site[ANNOUNCEMENTS_KEY];
+  site.head = (site.head ?? []).filter(([, attributes]) => !(SCRIPT_MARKER in (attributes ?? {})));
+  if (data) site.head.push(['script', { [SCRIPT_MARKER]: '' }, renderDismissedScript(data)]);
+  return changed;
 }
 
 /** The posts in a blog's feed: no drafts, newest first, up to the feed's limit. */
@@ -184,18 +207,39 @@ export function writeBlogFeeds(siteConfig: SiteConfig, options: BlogOptions = {}
  *   cache) and reloads them when any of them changes.
  * - Serves each blog's feed and the copied post images, which the build
  *   writes in `buildEnd`, so feed links work in development too.
+ * - Gives every page the announcement banner's data (see `attachAnnouncements`),
+ *   kept current while posts change, and has Vite bundle this package for the
+ *   server-side build, so the banner can read it there too.
  */
 export function blogVitePlugin(options: BlogOptions = {}): Plugin {
   let siteConfig: SiteConfig | undefined;
   const currentPages = () => (siteConfig ? loadPages(siteConfig, options) : []);
   // Every file whose output shows posts: blog pages, posts, and pages with a `::: blog-posts` block.
   const dependentFiles = () => [...currentPages().map((page) => page.absolutePath), ...widgetPages];
+  const invalidate = (server: ViteDevServer, files: string[]) => {
+    for (const file of files) {
+      for (const module of server.moduleGraph.getModulesByFile(file) ?? []) server.moduleGraph.invalidateModule(module);
+    }
+  };
+  /** Re-reads the announcements; when they changed, the site data is served afresh. */
+  const refreshAnnouncements = (server: ViteDevServer): boolean => {
+    if (!siteConfig || !attachAnnouncements(siteConfig, options)) return false;
+    const module = server.moduleGraph.getModuleById(SITE_DATA_MODULE);
+    if (module) server.moduleGraph.invalidateModule(module);
+    return true;
+  };
 
   return {
     name: 'vitepress-blog',
     enforce: 'pre',
+    config() {
+      // Bundled rather than loaded by Node, the client entry gets VitePress's
+      // client (`useData`) on the server too, so the banner renders there.
+      return { ssr: { noExternal: [PACKAGE_NAME] } };
+    },
     configResolved(config) {
       siteConfig = (config as { vitepress?: SiteConfig }).vitepress;
+      if (siteConfig) attachAnnouncements(siteConfig, options);
     },
     transform(code, id) {
       if (!siteConfig || !id.endsWith('.md') || !(mayHaveBlogFrontmatter(code) || hasWidget(code))) return null;
@@ -205,11 +249,8 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
       // Vite only calls handleHotUpdate for edits; a post added or deleted changes the lists too.
       const refresh = (file: string) => {
         if (!siteConfig || !file.endsWith('.md')) return;
-        for (const dependent of dependentFiles()) {
-          for (const module of server.moduleGraph.getModulesByFile(dependent) ?? []) {
-            server.moduleGraph.invalidateModule(module);
-          }
-        }
+        invalidate(server, dependentFiles());
+        refreshAnnouncements(server);
         server.ws.send({ type: 'full-reload' });
       };
       server.watcher.on('add', refresh).on('unlink', refresh);
@@ -245,6 +286,13 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
     },
     handleHotUpdate({ file, modules, server }) {
       if (!siteConfig || !file.endsWith('.md')) return;
+      // Every page shows the banner, so a change to it reloads them all. Checked
+      // first: a page that stops being an announcement is no longer a post.
+      if (refreshAnnouncements(server)) {
+        invalidate(server, dependentFiles());
+        server.ws.send({ type: 'full-reload' });
+        return [];
+      }
       const pages = currentPages();
       if (!pages.some((page) => page.absolutePath === file)) return;
       const affected = dependentFiles()
@@ -256,9 +304,9 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
 }
 
 /**
- * Wraps a VitePress config with the whole blog: the Markdown plugin, the dev
- * server plugin, `<head>` tags, descriptions from summaries, and feeds at the
- * end of the build.
+ * Wraps a VitePress config with the whole blog: the Markdown plugin, the Vite
+ * plugin (dev server and announcements), `<head>` tags, descriptions from
+ * summaries, and feeds at the end of the build.
  *
  * ```ts
  * // .vitepress/config.mts

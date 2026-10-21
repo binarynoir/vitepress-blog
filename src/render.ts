@@ -97,7 +97,7 @@ function renderAuthors(authors: BlogAuthor[], context: RenderContext): string {
   return `${escapeMarkdown(context.labels.by)} ${names}`;
 }
 
-function renderBadge(kind: 'draft' | 'sticky', context: RenderContext): string {
+function renderBadge(kind: 'draft' | 'sticky' | 'announcement', context: RenderContext): string {
   return `<span class="vp-blog-badge vp-blog-badge--${kind}">${escapeTemplateText(context.labels[kind])}</span>`;
 }
 
@@ -129,6 +129,23 @@ function toTagsAttribute(post: PostPage): string {
   return escapeHtml(post.post.tags.map((tag) => tag.toLowerCase()).join('|'));
 }
 
+/** The attributes the client filters a post by: its keywords, and whether it is an announcement. */
+function toItemAttributes(post: PostPage): string {
+  return `data-vp-blog-item data-tags="${toTagsAttribute(post)}"${post.post.announcement ? ' data-announcement' : ''}`;
+}
+
+/** Badges for a draft, a sticky post and an announcement, joined with spaces. */
+function renderBadges(post: PostPage, context: RenderContext): string {
+  const { draft, sticky, announcement } = post.post;
+  return [
+    draft && renderBadge('draft', context),
+    sticky && renderBadge('sticky', context),
+    announcement && renderBadge('announcement', context),
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
 interface MetaParts {
   authors: boolean;
   updated: boolean;
@@ -141,11 +158,10 @@ interface MetaParts {
  * labelled "Published" and "Updated"; on cards the date stands alone.
  */
 function renderMeta(post: PostPage, context: RenderContext, include: MetaParts): string {
-  const { date, dateHasTime, updated, updatedHasTime, readingMinutes, authors, draft, sticky } = post.post;
+  const { date, dateHasTime, updated, updatedHasTime, readingMinutes, authors } = post.post;
   const parts: string[] = [];
   if (include.badges) {
-    const badges = [draft && renderBadge('draft', context), sticky && renderBadge('sticky', context)];
-    const shown = badges.filter(Boolean).join(' ');
+    const shown = renderBadges(post, context);
     if (shown) parts.push(shown);
   }
   if (date) {
@@ -179,6 +195,7 @@ function renderCard(post: PostPage, context: RenderContext, index: IndexPage): s
   const modifiers = [
     post.post.sticky && 'sticky',
     post.post.draft && 'draft',
+    post.post.announcement && 'announcement',
     image && 'with-image',
     image && post.post.imageFit === 'contain' && 'contain',
   ]
@@ -187,7 +204,7 @@ function renderCard(post: PostPage, context: RenderContext, index: IndexPage): s
     .join('');
   const alt = escapeMarkdown(post.post.imageAlt);
   return [
-    `<article class="vp-blog-card${modifiers}"${imageStyle(post)} data-vp-blog-item data-tags="${toTagsAttribute(post)}">`,
+    `<article class="vp-blog-card${modifiers}"${imageStyle(post)} ${toItemAttributes(post)}>`,
     ...(image ? block('vp-blog-card__image', `[![${alt}](${toMarkdownUrl(image)})](${toMarkdownUrl(link)})`) : []),
     '<div class="vp-blog-card__body">',
     ...block('vp-blog-card__title', toPageLink(post.post.title, post.routePath)),
@@ -201,11 +218,9 @@ function renderCard(post: PostPage, context: RenderContext, index: IndexPage): s
 
 function renderCompactItem(post: PostPage, context: RenderContext): string {
   const date = post.post.date ? `${renderTime(post.post.date, post.post.dateHasTime, context)} ` : '';
-  const badges = [post.post.draft && renderBadge('draft', context), post.post.sticky && renderBadge('sticky', context)]
-    .filter(Boolean)
-    .join(' ');
+  const badges = renderBadges(post, context);
   // List items can't carry attributes in Markdown, so a hidden marker inside each one does.
-  const marker = `<span hidden data-vp-blog-item data-tags="${toTagsAttribute(post)}"></span>`;
+  const marker = `<span hidden ${toItemAttributes(post)}></span>`;
   return `- ${marker}${date}${toPageLink(post.post.title, post.routePath)}${badges ? ` ${badges}` : ''}`;
 }
 
@@ -291,6 +306,8 @@ function renderClientAttributes(index: IndexPage, context: RenderContext): strin
     'data-label-previous': labels.previous,
     'data-label-next': labels.next,
     'data-label-pages': labels.pages,
+    'data-label-announcements': labels.announcements,
+    'data-label-no-announcements': labels.noAnnouncements,
   };
   return Object.entries(attributes)
     .map(([name, value]) => `${name}="${escapeHtml(value)}"`)

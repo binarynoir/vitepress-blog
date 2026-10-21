@@ -2,6 +2,7 @@
 blog:
   scope: site
   sticky: true
+  announcement: Team A shipped the thing
   date: 2026-10-01
   updated: 2026-10-05
   image: launch.png
