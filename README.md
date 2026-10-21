@@ -159,7 +159,7 @@ blog:
 | `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: to leave drafts out of the build, the sidebar and the navbar too, see [Drafts](#drafts).                                                     |
 | `byline`        | the `byline` option                        | `false` hides this post's byline.                                                                                                                                                                         |
 | `cover`         | the `cover` option                         | `true` shows this post's image under its byline.                                                                                                                                                          |
-| `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links.                                                                                                                                                            |
+| `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links, and VitePress's previous / next links come back.                                                                                                           |
 
 Title, description, date, author(s), image and tags may also be written at the
 top level of the frontmatter, as other blog tools expect. A value under `blog`
@@ -525,7 +525,7 @@ link that copy. Public paths (`/cover.png`) and URLs are linked as they are.
 | `wordsPerMinute` | `200`                                                           | For "5 min read". `0` hides reading time.                                                                             |
 | `byline`         | `true`                                                          | Author, date and tags under each post's title.                                                                        |
 | `cover`          | `false`                                                         | Each post's image under its byline.                                                                                   |
-| `postNav`        | `true`                                                          | Newer and older post links at the end of each post.                                                                   |
+| `postNav`        | `true`                                                          | Newer and older post links at the end of each post, in place of VitePress's previous / next links.                    |
 | `drafts`         | `false`                                                         | List drafts, marked. Pass `process.env.NODE_ENV !== 'production'` for dev only.                                       |
 | `stripTags`      | `true`                                                          | Remove [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/) syntax from titles and summaries.              |
 | `feedLimit`      | `20`                                                            | Most posts in each feed.                                                                                              |

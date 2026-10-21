@@ -37,6 +37,11 @@ beforeAll(() => {
       frontmatter(['blog-index:', '  folders: [news]', '  layout: compact', '  groupBy: year'], '# Archive\n'),
     )
     .write('cards/index.md', frontmatter(['blog-index:', '  folders: [news]'], '# Cards\n'))
+    .write(
+      'notes/linked.md',
+      frontmatter(['blog:', '  date: 2026-01-01', 'prev: { text: Start, link: /start }'], '# Linked\n'),
+    )
+    .write('notes/index.md', frontmatter(['blog-index: true'], '# Notes\n'))
     .write('news/quiet.md', frontmatter(['blog:', '  byline: false', '  postNav: false'], '# Quiet\n'))
     .write('empty/index.md', frontmatter(['blog-index: true'], '# Nothing here\n'));
 });
@@ -157,6 +162,31 @@ describe('posts', () => {
     const html = site.render('news/first.md', { byline: false, postNav: false });
     expect(html).not.toContain('vp-blog-byline');
     expect(html).not.toContain('vp-blog-post-nav');
+  });
+});
+
+describe("VitePress's previous / next links", () => {
+  function frontmatterAfter(relativePath: string, options = {}): Record<string, unknown> {
+    const env: Record<string, unknown> = {};
+    site.render(relativePath, options, undefined, env);
+    return env.frontmatter as Record<string, unknown>;
+  }
+
+  it('turns them off on posts that have newer / older links', () => {
+    expect(frontmatterAfter('news/first.md')).toMatchObject({ prev: false, next: false });
+  });
+
+  it("keeps a post's own prev / next", () => {
+    expect(frontmatterAfter('notes/linked.md')).toMatchObject({ prev: { text: 'Start', link: '/start' }, next: false });
+  });
+
+  it('leaves them on when the newer / older links are off', () => {
+    expect(frontmatterAfter('news/quiet.md')).not.toHaveProperty('prev');
+    expect(frontmatterAfter('news/first.md', { postNav: false })).not.toHaveProperty('next');
+  });
+
+  it('leaves them on blog pages', () => {
+    expect(frontmatterAfter('news/index.md')).not.toHaveProperty('prev');
   });
 });
 

@@ -58,7 +58,13 @@ function withPostList(source: string, page: BlogPage, pages: BlogPage[], options
     : `${source.replace(/\s*$/, '')}\n\n${generated}`;
 }
 
-function withPostDecorations(source: string, page: BlogPage, pages: BlogPage[], options: BlogOptions): string {
+function withPostDecorations(
+  source: string,
+  page: BlogPage,
+  pages: BlogPage[],
+  options: BlogOptions,
+  frontmatter: Record<string, unknown> | undefined,
+): string {
   if (!isPost(page)) return source;
   const context = createRenderContext(options, path.dirname(page.absolutePath));
   const drafts = options.drafts ?? false;
@@ -76,6 +82,13 @@ function withPostDecorations(source: string, page: BlogPage, pages: BlogPage[], 
     if (blog) {
       const posts = listBlogPosts(pages, blog, { drafts, pinnedFirst: false, applyLimit: false });
       result = `${result.replace(/\s*$/, '')}\n\n${renderPostNav(page, posts, blog, context)}\n`;
+      // One set of links per page: VitePress's own previous / next in the doc
+      // footer follow the sidebar, not the post dates. A post's own `prev` /
+      // `next` still win. VitePress reads `env.frontmatter` after rendering.
+      if (frontmatter) {
+        frontmatter.prev ??= false;
+        frontmatter.next ??= false;
+      }
     }
   }
   return result;
@@ -117,7 +130,9 @@ function applyBlog({ src, env }: StateCore, options: BlogOptions): string {
 
   const page = pages.find((candidate) => candidate.relativePath === relativePath);
   if (!page) return result;
-  return page.index ? withPostList(result, page, pages, options) : withPostDecorations(result, page, pages, options);
+  return page.index
+    ? withPostList(result, page, pages, options)
+    : withPostDecorations(result, page, pages, options, frontmatter);
 }
 
 /**

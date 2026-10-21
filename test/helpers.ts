@@ -17,12 +17,13 @@ export class Site {
     return this;
   }
 
-  /** Renders a page the way VitePress would: frontmatter split off into `env`. */
-  render(relativePath: string, options: BlogOptions = {}, source?: string): string {
+  /** Renders a page the way VitePress would: frontmatter split off into `env`, which is passed in to read back. */
+  render(relativePath: string, options: BlogOptions = {}, source?: string, env: Record<string, unknown> = {}): string {
     const raw = source ?? readFileSync(path.join(this.root, relativePath), 'utf8');
     const { data, content } = readFrontmatter(raw);
     const md = new MarkdownIt({ html: true }).use(blogMarkdown, options);
-    return md.render(content, { frontmatter: data, path: path.join(this.root, relativePath), relativePath });
+    Object.assign(env, { frontmatter: data, path: path.join(this.root, relativePath), relativePath });
+    return md.render(content, env);
   }
 
   remove(): void {
