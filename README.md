@@ -159,7 +159,7 @@ blog:
 | `draft`         | `false`                                    | Left out of lists and feeds. The page itself is still built: to leave drafts out of the build, the sidebar and the navbar too, see [Drafts](#drafts).                                                     |
 | `byline`        | the `byline` option                        | `false` hides this post's byline.                                                                                                                                                                         |
 | `cover`         | the `cover` option                         | `true` shows this post's image under its byline.                                                                                                                                                          |
-| `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links, and VitePress's previous / next links come back.                                                                                                           |
+| `postNav`       | the `postNav` option                       | `false` hides this post's newer / older links, and VitePress's previous / next links come back. A post's own `prev` / `next` frontmatter sets VitePress's link either way.                                |
 
 Title, description, date, author(s), image and tags may also be written at the
 top level of the frontmatter, as other blog tools expect. A value under `blog`
