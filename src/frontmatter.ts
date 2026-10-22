@@ -25,7 +25,7 @@ const HEADING_1 = /^ {0,3}#[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/m;
 const TAG_SYNTAX = /\(\(<?tag([|/])[^|/)\r\n]*(?:\1[^|/)\r\n]*){0,2}\)\)/g;
 const MAX_SUMMARY_LENGTH = 200;
 /** How many categories a browse row shows before "+N more": fewer than keywords, as their names run longer. */
-const DEFAULT_CATEGORY_LIMIT = 8;
+const DEFAULT_CATEGORY_LIMIT = 5;
 /** How many keywords a browse row shows before "+N more". */
 const DEFAULT_TAG_LIMIT = 12;
 

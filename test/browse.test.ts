@@ -25,13 +25,16 @@ afterAll(() => site.remove());
 
 const posts = () => indexBlogSource(site.root).filter(isPost) as PostPage[];
 const html = () => site.render('news/index.md');
-/** One row of the browse panel, from its opening tag to its end. */
-const row = (page: string, facet: string, year = '') => {
-  const marker = page.indexOf(`data-vp-blog-facet="${facet}"${year ? ` data-year="${year}"` : ''}`);
+/** One part of the browse panel: the category tabs, or a drop-down (`tag`, `date`), from its opening tag to its end. */
+const row = (page: string, facet: string) => {
+  const marker = page.indexOf(`data-vp-blog-facet="${facet}"`);
   if (marker === -1) return '';
-  const start = page.lastIndexOf('<div class="vp-blog-facet', marker);
-  return page.slice(start, page.indexOf('</div>\n</div>', marker));
+  const start = page.lastIndexOf('<', marker);
+  const ends = { category: '<div class="vp-blog-browse__tools">', tag: '</div>\n</div>' } as Record<string, string>;
+  const end = page.indexOf(ends[facet] ?? '</details>', marker);
+  return page.slice(start, end);
 };
+const names = (part: string) => [...part.matchAll(/facet__name">([^<]+)</g)].map((match) => match[1]);
 
 describe('collecting', () => {
   it('counts categories ignoring case, in the first spelling, alphabetically', () => {
@@ -63,51 +66,76 @@ describe('collecting', () => {
 });
 
 describe('the browse panel', () => {
-  it('has a row each for categories, keywords and the archive, in that order', () => {
+  it('is a bar of category tabs and the date drop-down, then a line of keywords', () => {
     const page = html();
-    expect(page).toContain('<nav class="vp-blog-browse" aria-label="Browse posts">');
-    const order = ['category', 'tag', 'year', 'month'].map((facet) => page.indexOf(`data-vp-blog-facet="${facet}"`));
+    expect(page).toContain('<nav class="vp-blog-browse" aria-label="Browse posts">\n<div class="vp-blog-browse__bar">');
+    const order = ['category', 'date', 'tag'].map((facet) => page.indexOf(`data-vp-blog-facet="${facet}"`));
     expect(order).toEqual([...order].sort((a, b) => a - b));
-    expect(row(page, 'category')).toContain('role="group" aria-label="Categories"');
+    expect(order[0]).toBeGreaterThan(-1);
+    expect(row(page, 'category')).toContain('<div class="vp-blog-tabs" role="group" aria-label="Categories"');
+    expect(row(page, 'date')).toContain('data-label="Date">Date</span>');
+    expect(row(page, 'tag')).toContain('<div class="vp-blog-keywords" role="group" aria-label="Keywords"');
+    // The keywords come after the bar has closed.
+    expect(page).toMatch(/<\/div>\n<\/div>\n<div class="vp-blog-keywords"/);
   });
 
-  it('links each category and year to the blog, filtered, with its count', () => {
-    const page = html();
-    expect(row(page, 'category')).toContain(
+  it('makes each category a tab with its count, after "All"', () => {
+    const tabs = row(html(), 'category');
+    expect(names(tabs)).toEqual(['All', 'Engineering', 'Product']);
+    expect(tabs).toContain(
+      '<a href="/news/?category="><span class="vp-blog-facet__name">All</span> <span class="vp-blog-facet__count">5</span></a>',
+    );
+    expect(tabs).toContain(
       '<a href="/news/?category=engineering"><span class="vp-blog-facet__name">Engineering</span> <span class="vp-blog-facet__count">2</span></a>',
     );
-    expect(row(page, 'year')).toContain(
-      '<a href="/news/?year=2026"><span class="vp-blog-facet__name">2026</span> <span class="vp-blog-facet__count">3</span></a>',
-    );
   });
 
-  it('writes a hidden row of months for each year, short names with the full one as a tooltip', () => {
-    const page = html();
-    const months = row(page, 'month', '2026');
-    expect(months).toContain('aria-label="Archive 2026"');
-    expect(months).toContain(' hidden>');
-    expect(months).toContain(
+  it('puts the keywords on the bar when there are no tabs', () => {
+    site.write('tagged/index.md', frontmatter(['blog-index: true'], '# Tagged\n'));
+    site.write('tagged/a.md', frontmatter(['blog:', '  tags: [x]'], '# a\n'));
+    site.write('tagged/b.md', frontmatter(['blog:', '  tags: [y]'], '# b\n'));
+    const page = site.render('tagged/index.md');
+    expect(page).not.toContain('vp-blog-tabs');
+    expect(page).toContain('<div class="vp-blog-browse__bar">\n<div class="vp-blog-keywords"');
+  });
+
+  it('puts the categories past categoryLimit under "More", with their counts', () => {
+    site.write('cats/index.md', frontmatter(['blog-index:', '  categoryLimit: 1'], '# Cats\n'));
+    site.write('cats/a.md', frontmatter(['blog:', '  category: Big'], '# a\n'));
+    site.write('cats/b.md', frontmatter(['blog:', '  category: Big'], '# b\n'));
+    site.write('cats/c.md', frontmatter(['blog:', '  category: Small'], '# c\n'));
+    const tabs = row(site.render('cats/index.md'), 'category');
+    expect(tabs).toContain('<div class="vp-blog-menu-wrap" data-vp-blog-menu="more">');
+    expect(tabs).toContain('data-label="More">More</span>');
+    const more = tabs.slice(tabs.indexOf('data-vp-blog-menu="more"'));
+    expect(names(more)).toEqual(['Small']);
+    expect(more).toContain('<span class="vp-blog-facet__count">1</span>');
+  });
+
+  it('lists each year in the date drop-down with its count, and its months under it', () => {
+    const date = row(html(), 'date');
+    expect(names(date)).toEqual(['All time', '2026', 'Oct', 'Mar', '2025', 'Dec']);
+    expect(date).toContain(
+      '<a href="/news/?year=2026"><span class="vp-blog-facet__name">2026</span> <span class="vp-blog-facet__count">3</span></a>',
+    );
+    expect(date).toContain('<div class="vp-blog-menu__year" data-year="2026">');
+    expect(date).toContain(
       '<a href="/news/?month=2026-10" title="October 2026"><span class="vp-blog-facet__name">Oct</span> <span class="vp-blog-facet__count">2</span></a>',
     );
-    expect(months.indexOf('Oct')).toBeLessThan(months.indexOf('Mar'));
-    expect(row(page, 'month', '2025')).toContain('Dec');
   });
 
   it('names months in the locale', () => {
-    expect(row(site.render('news/index.md', { locale: 'de-DE' }), 'month', '2026')).toContain('title="Oktober 2026"');
+    expect(row(site.render('news/index.md', { locale: 'de-DE' }), 'date')).toContain('title="Oktober 2026"');
   });
 
-  it('shows the months of the only year without hiding them', () => {
+  it('heads the months of the only year with it, since choosing it would narrow nothing', () => {
     site.write('solo/index.md', frontmatter(['blog-index: true'], '# Solo\n'));
     site.write('solo/a.md', frontmatter(['blog:', '  date: 2026-01-05'], '# a\n'));
     site.write('solo/b.md', frontmatter(['blog:', '  date: 2026-02-05'], '# b\n'));
-    const page = site.render('solo/index.md');
-    const months = row(page, 'month', '2026');
-    expect(months).toContain('Jan');
-    expect(months).not.toContain(' hidden>');
-    // Choosing the only year would narrow nothing, so there is no year row, and the months take the label.
-    expect(page).not.toContain('data-vp-blog-facet="year"');
-    expect(months).toContain('<span class="vp-blog-facet__label" aria-hidden="true">Archive</span>');
+    const date = row(site.render('solo/index.md'), 'date');
+    expect(names(date)).toEqual(['All time', '2026', 'Feb', 'Jan']);
+    expect(date).toContain('<p><span class="vp-blog-facet__name">2026</span></p>');
+    expect(date).not.toContain('?year=2026');
   });
 
   it('leaves the archive out when every post is from the same month, and the panel when there is nothing to browse', () => {
@@ -126,12 +154,12 @@ describe('the browse panel', () => {
     );
     const page = site.render('quiet/index.md');
     expect(page).not.toContain('data-vp-blog-facet="category"');
-    expect(page).not.toContain('data-vp-blog-facet="year"');
+    expect(page).not.toContain('data-vp-blog-facet="date"');
     expect(page).toContain('data-vp-blog-facet="tag"');
   });
 });
 
-describe('rows that would not narrow the posts', () => {
+describe('parts that would not narrow the posts', () => {
   it('are left out: one category on every post, or one keyword on every post', () => {
     site.write('same/index.md', frontmatter(['blog-index: true'], '# Same\n'));
     site.write(
@@ -145,7 +173,7 @@ describe('rows that would not narrow the posts', () => {
     const page = site.render('same/index.md');
     expect(page).not.toContain('data-vp-blog-facet="category"');
     expect(page).not.toContain('data-vp-blog-facet="tag"');
-    expect(page).toContain('data-vp-blog-facet="month"');
+    expect(page).toContain('data-vp-blog-facet="date"');
   });
 
   it('stay when the one value is on only some posts, since choosing it still narrows them', () => {
@@ -156,7 +184,7 @@ describe('rows that would not narrow the posts', () => {
   });
 });
 
-describe('long rows', () => {
+describe('long keyword lists', () => {
   beforeAll(() => {
     site.write('many/index.md', frontmatter(['blog-index:', '  tagLimit: 3', '  tagMinCount: 2'], '# Many\n'));
     // zeta on 3 posts, beta on 2, the rest on 1 or 2.
@@ -169,9 +197,8 @@ describe('long rows', () => {
     );
   });
 
-  it('list chips most used first, then alphabetically', () => {
-    const names = [...row(site.render('many/index.md'), 'tag').matchAll(/facet__name">([^<]+)</g)].map((m) => m[1]);
-    expect(names).toEqual(['zeta', 'beta', 'gamma']);
+  it('list keywords most used first, then alphabetically', () => {
+    expect(names(row(site.render('many/index.md'), 'tag'))).toEqual(['zeta', 'beta', 'gamma']);
   });
 
   it('leave out keywords used by fewer than tagMinCount posts', () => {
@@ -190,11 +217,11 @@ describe('long rows', () => {
 });
 
 describe('the Subscribe link', () => {
-  it('sits at the end of the first row of the panel', () => {
+  it('ends the toolbar', () => {
     const page = site.render('news/index.md', { siteUrl: 'https://example.com' });
-    const first = row(page, 'category');
-    expect(first).toContain('<div class="vp-blog-facet__aside">');
-    expect(first).toContain('vp-blog-rss');
+    const rss = page.indexOf('<div class="vp-blog-browse__rss">');
+    expect(rss).toBeGreaterThan(page.indexOf('data-vp-blog-facet="date"'));
+    expect(page.slice(rss, page.indexOf('</nav>', rss))).toContain('vp-blog-rss');
     expect(page).not.toContain('vp-blog-subscribe');
   });
 

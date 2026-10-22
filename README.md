@@ -280,12 +280,12 @@ The list goes where `<!-- blog-posts -->` is, or after the page's content.
 | `groupBy`       | none                          | `year` or `month` puts a heading ("2026", "October 2026") above each year's or month's posts.   |
 | `showTags`      | `true`                        | `false` hides tag chips on cards.                                                               |
 | `showCategory`  | `true`                        | `false` hides the category above each card's title.                                             |
-| `categoryList`  | `true`                        | A row of categories in the browse panel, each with its count. `false` leaves it out.            |
-| `categoryLimit` | `8`                           | Categories shown before "+N more", most used first. `0` shows them all.                         |
-| `tagList`       | `true`                        | A row of keywords in the browse panel, each with its count. `false` leaves it out.              |
-| `tagLimit`      | `12`                          | Keywords shown before "+N more", most used first. `0` shows them all.                           |
+| `categoryList`  | `true`                        | Category tabs in the browse panel. `false` leaves them out.                                     |
+| `categoryLimit` | `5`                           | Category tabs, most used first; the rest go under "More". `0` makes them all tabs.              |
+| `tagList`       | `true`                        | A line of keyword chips in the browse panel, each with its count. `false` leaves it out.        |
+| `tagLimit`      | `12`                          | Keyword chips shown, most used first, before "+N more". `0` shows them all.                     |
 | `tagMinCount`   | `1`                           | Leave keywords used by fewer posts out of the browse panel. They still show on cards.           |
-| `archive`       | `true`                        | Rows of years, and each year's months, in the browse panel. `false` leaves them out.            |
+| `archive`       | `true`                        | A date drop-down of years and their months in the browse panel. `false` leaves it out.          |
 | `pageSize`      | `10` (the `pageSize` option)  | Posts per page. `0` shows them all on one page.                                                 |
 | `pinLimit`      | all (the `pinLimit` option)   | Most pinned posts kept at the top. Extra ones take their place by date.                         |
 | `rssLink`       | `true` (the `rssLink` option) | A "Subscribe" link with the RSS icon to this blog's feed. `false` leaves it out.                |
@@ -332,35 +332,51 @@ filters the posts, all from the URL:
 Filters combine: `?category=engineering&tag=api&year=2026` shows the
 engineering posts tagged `api` from 2026. Pages count the matching posts only.
 
-**The browse panel** above the posts has a row each for categories, keywords
-and the archive, each chip with its post count. It is a flat toolbar between
-two rules, with the blog's "Subscribe" link at the end of its first row.
+**The browse panel** above the posts is a bar on a single rule, then a line
+of keywords. On the bar, a blog's categories, the few kinds of post it has,
+are tabs with their counts, "All" first; the date drop-down and the blog's RSS
+link sit at its end. Keywords, the topics readers browse by, are one click
+away as chips below it.
 
-- **Chips combine.** A chip adds its filter to the ones in view; another chip
-  in the same row replaces it, and clicking the active chip takes it off again.
-- **Counts follow the view.** Each count says how many posts the chip would
-  show with the other filters kept, so readers can see where a click leads.
-  Chips that would show nothing are dimmed.
-- **Years open into months.** Choosing a year shows a row of its months below
-  the years (with only one year, its months always show). A month keeps its
-  year active, and clicking it again steps back out to the whole year.
+```txt
+All 8   Engineering 3   Product 3   Design 2   More ▾               [Date ▾]  RSS
+──────────────────────────────────────────────────────────────────────────────────
+api 2   performance 2   release 2   ux 2   accessibility 1   +3 more
+```
+
+- **Filters combine.** Each tab, chip and date adds its filter to the ones in
+  view, replacing another value of the same kind; choosing the active one
+  again takes it off.
+- **The panel shows what is on.** The active tab is underlined, the active
+  keyword chip is highlighted, and the date drop-down shows its value in
+  place of its name ("October 2026"), with a × beside it that takes it off.
+- **Counts follow the view.** Each tab, keyword and date says how many posts
+  it would show with the other filters kept, so readers can see where a click
+  leads. Those that would show nothing are dimmed.
+- **Dates are years and their months.** The date drop-down lists each year
+  with its months beneath it. A month keeps its year active, and choosing it
+  again steps back out to the whole year.
 - **It stays short with many values.** Categories and keywords are ranked by
-  how many posts use them, and a row shows its first `categoryLimit` (8) or
-  `tagLimit` (12), then "+N more". That opens the full list alphabetically,
-  and a row of more than 30 values also gets a field to narrow it. An active
-  chip always shows. `tagMinCount: 2` leaves out keywords used only once.
-- **One line per row on phones.** On screens narrower than 640px, each row is
-  a single line that scrolls sideways, its end fading while there is more.
-  Chips are 32px high on touch screens.
-- **Rows only appear when they can narrow the posts.** No categories, or one
-  category that every post is in, means no category row. The archive needs
-  posts from more than one month, and with only one year, it is that year's
-  months alone.
+  how many posts use them. The first `categoryLimit` (5) categories are tabs,
+  and the rest go under "More". The first `tagLimit` (12) keywords show, then
+  "+N more", which opens the full list alphabetically, with a field to narrow
+  it past 30. `tagMinCount: 2` leaves out keywords used only once.
+- **Phones keep it to two lines.** On screens narrower than 640px, the tabs
+  and the keywords each scroll sideways, their ends fading while there is
+  more, and the date drop-down opens across the full width.
+- **It works without JavaScript.** Every tab, chip and date is a link, and the
+  drop-downs are `<details>` elements. With `useBlog()`, a drop-down closes
+  on a click outside it, on Escape, and once a choice is followed.
+- **Parts only appear when they can narrow the posts.** No categories, or one
+  category that every post is in, means no tabs, and the keywords then take
+  their place on the bar. The date drop-down needs posts from more than one
+  month.
 
-**The active filters** show above the posts while any filter is on: how many
-posts match ("4 posts", or "No posts match these filters."), a chip for each
-filter that removes just that one, and "Show all posts" to clear them all. It
-is a status region, so screen readers announce the new count.
+**While a filter is on**, a line under the panel says how many posts match
+("4 posts", or "No posts match these filters.") with "Show all posts" beside
+it to take every filter off. It is a status region, so screen readers announce
+the new count. `?announcements`, which has no place in the toolbar, shows
+there as a chip that removes it.
 
 Categories and keywords are links wherever they appear: in the browse panel,
 on each card, and in a post's byline, where they link to the post's own blog,
@@ -598,10 +614,13 @@ withBlog(config, {
     noPosts: 'Noch keine Beiträge.',
     undated: 'Ohne Datum',
     browse: 'Beiträge durchsuchen',
+    all: 'Alle',
+    moreCategories: 'Mehr',
+    date: 'Datum',
+    allTime: 'Gesamter Zeitraum',
     categories: 'Kategorien',
     tags: 'Schlagwörter',
     archive: 'Archiv',
-    category: 'Kategorie',
     tag: 'Schlagwort',
     postCount: '{n} Beiträge',
     postCountOne: '{n} Beitrag',
@@ -645,7 +664,6 @@ mode. Override these to restyle it without new rules:
 | `--vp-blog-tag-color`           | `var(--vp-c-text-2)`          |
 | `--vp-blog-accent`              | `var(--vp-c-brand-1)`         |
 | `--vp-blog-browse-bg`           | `transparent`                 |
-| `--vp-blog-facet-label-width`   | `6.5rem`                      |
 | `--vp-blog-announcement-height` | `40px`                        |
 | `--vp-blog-announcement-bg`     | `var(--vp-button-brand-bg)`   |
 | `--vp-blog-announcement-color`  | `var(--vp-button-brand-text)` |

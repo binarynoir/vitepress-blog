@@ -198,7 +198,7 @@ describe('resolveIndexConfig', () => {
       showTags: true,
       showCategory: true,
       categoryList: true,
-      categoryLimit: 8,
+      categoryLimit: 5,
       tagList: true,
       tagLimit: 12,
       tagMinCount: 1,

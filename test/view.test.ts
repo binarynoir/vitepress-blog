@@ -40,11 +40,15 @@ const chip = (facet: string, name: string) =>
     (anchor) => anchor.querySelector('.vp-blog-facet__name')!.textContent === name,
   )!;
 const count = (anchor: HTMLAnchorElement) => anchor.querySelector('.vp-blog-facet__count')!.textContent;
-const monthRows = () =>
-  [...document.querySelectorAll<HTMLElement>('[data-vp-blog-facet="month"]')].map((row) => [
-    row.dataset.year,
-    row.hidden,
-  ]);
+/** A drop-down by its facet (`tag`, `date`, `more`): its button's text, and the link beside it that takes it off. */
+const menu = (facet: string) => {
+  const wrap = document.querySelector<HTMLElement>(`[data-vp-blog-menu="${facet}"]`)!;
+  return {
+    wrap,
+    text: wrap.querySelector('.vp-blog-menu__text')!.textContent,
+    clear: wrap.querySelector<HTMLAnchorElement>('.vp-blog-menu__clear'),
+  };
+};
 
 describe('reading the URL', () => {
   const read = (search: string) => readFilter(new URL(`http://localhost/news/${search}`));
@@ -123,21 +127,23 @@ describe('keyword filter', () => {
     expect(shown()).toEqual(['two', 'three']);
   });
 
-  it('says how many posts match, with a chip that removes it and a link to show everything', () => {
+  it('says how many posts match, with a link that takes every filter off', () => {
     view('?tag=release');
     expect(filter().hidden).toBe(false);
     expect(filter().querySelector('.vp-blog-filter__count')!.textContent).toBe('4 posts');
-    const remove = filter().querySelector<HTMLAnchorElement>('.vp-blog-filter__chip')!;
-    expect(remove.textContent).toBe('Keyword release×');
-    expect(remove.getAttribute('aria-label')).toBe('Remove filter: Keyword release');
-    expect(remove.getAttribute('href')).toBe('/news/');
+    expect(filter().querySelector('.vp-blog-filter__chip')).toBeNull();
     expect(filter().querySelector('.vp-blog-filter__clear')!.getAttribute('href')).toBe('/news/');
   });
 
-  it('marks the active keyword chip', () => {
+  it('takes the keyword off from its own chip', () => {
+    view('?tag=release');
+    expect(chip('tag', 'release').getAttribute('href')).toBe('/news/');
+  });
+
+  it('marks the active keyword choice', () => {
     view('?tag=api');
-    const active = [...document.querySelectorAll('.vp-blog-facet a.is-active')].map((a) => a.textContent);
-    expect(active).toEqual(['api 2']);
+    const active = [...document.querySelectorAll('[data-vp-blog-facet="tag"] .vp-blog-facet__chips a.is-active')];
+    expect(active.map((a) => a.textContent)).toEqual(['api 2']);
     expect(chip('tag', 'api').getAttribute('aria-current')).toBe('true');
   });
 
@@ -145,15 +151,14 @@ describe('keyword filter', () => {
     view('?tag=%3Cimg%20src%3Dx%3E');
     expect(shown()).toEqual([]);
     expect(filter().textContent).toContain('No posts match these filters.');
-    expect(filter().textContent).toContain('<img src=x>');
-    expect(filter().querySelector('img')).toBeNull();
+    expect(document.querySelector('img')).toBeNull();
   });
 
   it('is cleared without a filter', () => {
     view('?tag=api');
     view('');
     expect(filter().hidden).toBe(true);
-    expect(document.querySelectorAll('.vp-blog-facet a.is-active')).toHaveLength(0);
+    expect(document.querySelectorAll('.vp-blog-keywords a.is-active')).toHaveLength(0);
   });
 });
 
@@ -163,9 +168,16 @@ describe('category filter', () => {
     expect(shown()).toEqual(['one', 'three', 'five']);
   });
 
-  it('names the category as its posts spell it', () => {
+  it('marks its tab, and "All" without one', () => {
     view('?category=engineering');
-    expect(filter().querySelector('.vp-blog-filter__chip')!.textContent).toBe('Category Engineering×');
+    const active = () =>
+      [...document.querySelectorAll('.vp-blog-tabs a.is-active')].map(
+        (a) => a.querySelector('.vp-blog-facet__name')!.textContent,
+      );
+    expect(active()).toEqual(['Engineering']);
+    expect(chip('category', 'All').getAttribute('href')).toBe('/news/');
+    view('');
+    expect(active()).toEqual(['All']);
   });
 
   it('marks the category link on cards', () => {
@@ -182,13 +194,14 @@ describe('date filter', () => {
     expect(shown()).toEqual(['five']);
     const years = [...document.querySelectorAll<HTMLElement>('.vp-blog-year')].map((year) => year.hidden);
     expect(years).toEqual([true, false]);
-    expect(filter().querySelector('.vp-blog-filter__chip')!.textContent).toBe('2025×');
+    expect(menu('date').text).toBe('2025');
   });
 
   it('shows a month, named in the blog locale', () => {
     view('?month=2026-03');
     expect(shown()).toEqual(['three']);
-    expect(filter().querySelector('.vp-blog-filter__chip')!.textContent).toBe('March 2026×');
+    expect(menu('date').text).toBe('March 2026');
+    expect(menu('date').clear!.getAttribute('aria-label')).toBe('Remove filter: March 2026');
   });
 
   it('leaves out undated posts', () => {
@@ -209,18 +222,16 @@ describe('combined filters', () => {
 
   it('removes one filter at a time, keeping the others', () => {
     view('?category=engineering&tag=release&page=2');
-    const removes = [...filter().querySelectorAll('.vp-blog-filter__chip')].map((a) => a.getAttribute('href'));
-    expect(removes).toEqual(['/news/?tag=release', '/news/?category=engineering']);
+    expect(chip('category', 'All').getAttribute('href')).toBe('/news/?tag=release');
+    expect(chip('tag', 'release').getAttribute('href')).toBe('/news/?category=engineering');
   });
 
   it('shows announcements as a removable filter too', () => {
     expect(view('?announcements&tag=api')).toMatchObject({ announcements: true, tag: 'api' });
     expect(shown()).toEqual(['three']);
     const chips = [...filter().querySelectorAll('.vp-blog-filter__chip')];
-    expect(chips.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Announcements×', '/news/?tag=api'],
-      ['Keyword api×', '/news/?announcements'],
-    ]);
+    // Announcements have no place in the toolbar, so they get a chip of their own.
+    expect(chips.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([['Announcements×', '/news/?tag=api']]);
   });
 });
 
@@ -228,7 +239,7 @@ describe('the browse panel', () => {
   it('links each chip to the current view with it added, back to page 1', () => {
     view('?category=engineering&page=2');
     expect(chip('tag', 'release').getAttribute('href')).toBe('/news/?category=engineering&tag=release');
-    expect(chip('year', '2026').getAttribute('href')).toBe('/news/?category=engineering&year=2026');
+    expect(chip('date', '2026').getAttribute('href')).toBe('/news/?category=engineering&year=2026');
     // Another category replaces the one in view.
     expect(chip('category', 'Product').getAttribute('href')).toBe('/news/?category=product');
   });
@@ -243,15 +254,16 @@ describe('the browse panel', () => {
     view('?category=engineering');
     expect(count(chip('tag', 'release'))).toBe('2');
     expect(count(chip('tag', 'api'))).toBe('1');
-    expect(count(chip('year', '2026'))).toBe('2');
-    // A category chip counts with the other categories set aside.
+    expect(count(chip('date', '2026'))).toBe('2');
+    // A category tab counts with the other categories set aside.
     expect(count(chip('category', 'Product'))).toBe('1');
+    expect(count(chip('category', 'All'))).toBe('5');
   });
 
   it('dims chips that would show nothing', () => {
     view('?tag=api');
-    expect(chip('year', '2025').classList.contains('is-empty')).toBe(true);
-    expect(chip('year', '2026').classList.contains('is-empty')).toBe(false);
+    expect(chip('date', '2025').classList.contains('is-empty')).toBe(true);
+    expect(chip('date', '2026').classList.contains('is-empty')).toBe(false);
   });
 
   it('restores the counts when the filters are cleared', () => {
@@ -261,33 +273,36 @@ describe('the browse panel', () => {
     expect(chip('tag', 'release').getAttribute('href')).toBe('/news/?tag=release');
   });
 
-  it('shows the months of the year in view', () => {
+  it('closes its drop-downs once a choice is followed', () => {
+    const details = menu('date').wrap.querySelector('details')!;
+    details.open = true;
+    view('?tag=api');
+    expect(details.open).toBe(false);
+  });
+
+  it('closes an open drop-down on a click outside it, or on Escape', () => {
     view('');
-    expect(monthRows()).toEqual([
-      ['2026', true],
-      ['2025', true],
-    ]);
-    view('?year=2026');
-    expect(monthRows()).toEqual([
-      ['2026', false],
-      ['2025', true],
-    ]);
-    expect(chip('year', '2026').classList.contains('is-active')).toBe(true);
+    const details = menu('date').wrap.querySelector('details')!;
+    details.open = true;
+    details.querySelector('.vp-blog-menu__panel')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(details.open).toBe(true);
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(details.open).toBe(false);
+    details.open = true;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(details.open).toBe(false);
+    expect(document.activeElement).toBe(details.querySelector('summary'));
   });
 
   it('keeps a month inside its year: the year stays active, and both step back out', () => {
     view('?month=2025-01');
-    expect(monthRows()).toEqual([
-      ['2026', true],
-      ['2025', false],
-    ]);
-    const january = chip('month', 'Jan');
+    const january = chip('date', 'Jan');
     expect(january.classList.contains('is-active')).toBe(true);
     expect(january.getAttribute('title')).toBe('January 2025');
     expect(january.getAttribute('href')).toBe('/news/?year=2025');
-    expect(chip('year', '2025').classList.contains('is-active')).toBe(true);
-    expect(chip('year', '2025').getAttribute('href')).toBe('/news/?year=2025');
+    expect(chip('date', '2025').classList.contains('is-active')).toBe(true);
+    expect(chip('date', '2025').getAttribute('href')).toBe('/news/?year=2025');
     view('?year=2025');
-    expect(chip('year', '2025').getAttribute('href')).toBe('/news/');
+    expect(chip('date', '2025').getAttribute('href')).toBe('/news/');
   });
 });

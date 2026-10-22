@@ -11,8 +11,6 @@
   --vp-blog-tag-color: var(--vp-c-text-2);
   --vp-blog-accent: var(--vp-c-brand-1);
   --vp-blog-browse-bg: transparent;
-  /* Width of the label column in the browse panel, so every row's chips line up. */
-  --vp-blog-facet-label-width: 6.5rem;
   --vp-blog-announcement-height: 40px;
   --vp-blog-announcement-bg: var(--vp-button-brand-bg);
   --vp-blog-announcement-color: var(--vp-button-brand-text);
@@ -192,7 +190,6 @@
 .vp-blog-tag,
 .vp-blog-category,
 .vp-blog-badge,
-.vp-blog-facet__chips a,
 .vp-blog-card__tags a,
 .vp-blog-byline__category a,
 .vp-blog-byline__tags a {
@@ -210,7 +207,6 @@
 
 /* Chips you tap are 32px high on touch screens. */
 @media (pointer: coarse) {
-  .vp-blog-facet__chips a,
   .vp-blog-card__tags a,
   .vp-blog-byline__category a,
   .vp-blog-byline__tags a {
@@ -219,7 +215,6 @@
 }
 
 /* Chips are links that filter their blog. */
-.vp-blog .vp-blog-facet__chips a,
 .vp-blog .vp-blog-card__tags a,
 .vp-blog-byline__category a,
 .vp-blog-byline__tags a {
@@ -230,11 +225,9 @@
     opacity 0.25s;
 }
 
-.vp-blog .vp-blog-facet__chips a:hover,
 .vp-blog .vp-blog-card__tags a:hover,
 .vp-blog-byline__category a:hover,
 .vp-blog-byline__tags a:hover,
-.vp-blog .vp-blog-facet__chips a.is-active,
 .vp-blog .vp-blog-card__tags a.is-active {
   background: var(--vp-c-brand-soft);
   color: var(--vp-blog-accent);
@@ -321,107 +314,435 @@
 }
 
 /*
- * The browse panel: one row each for categories, keywords and years, and the
- * months of the year in view below the years. A flat toolbar between two
- * rules, so it reads as a tool rather than another post. On wide screens the
- * labels sit in a column of their own and chips wrap; on narrow ones each row
- * is a single line that scrolls sideways.
+ * The browse panel: a bar on a single rule, with category tabs on the left
+ * and the date drop-down and RSS link on the right, then a line of keyword
+ * chips under it. On narrow screens the tabs and keywords scroll sideways,
+ * and the drop-down opens across the full width.
  */
 .vp-blog-browse {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 16px 0;
-  padding: 12px 0;
-  border-top: 1px solid var(--vp-c-divider);
-  border-bottom: 1px solid var(--vp-c-divider);
+  margin: 24px 0 16px;
   background: var(--vp-blog-browse-bg);
 }
 
-.vp-blog-facet {
-  display: grid;
-  /* Label, chips, then "+N more" and the "Subscribe" link when the row has them. */
-  grid-template-columns: var(--vp-blog-facet-label-width) minmax(0, 1fr) auto auto;
-  gap: 4px 12px;
-  align-items: baseline;
+.vp-blog-browse__bar {
+  position: relative;
+  display: flex;
+  gap: 4px 16px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--vp-c-divider);
 }
 
-.vp-blog-facet__label {
-  color: var(--vp-blog-meta-color);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 28px;
+/* Over `.vp-doc p`, whose margins would pad every part of the toolbar. */
+.vp-blog .vp-blog-browse p {
+  margin: 0;
 }
 
-/* A year's months, under the years: their label is the year. */
-.vp-blog-facet--month .vp-blog-facet__label {
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.vp-blog-facet__chips {
+/* Category tabs: plain words, the active one underlined in the accent on the toolbar's rule. */
+.vp-blog-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
   min-width: 0;
 }
 
-.vp-blog-facet__chips p {
+.vp-blog-tabs > .vp-blog-facet__chips {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.vp-blog-tabs > .vp-blog-facet__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.vp-blog-tabs.is-scrollable > .vp-blog-facet__chips {
+  mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+}
+
+.vp-blog-tabs > .vp-blog-facet__chips p {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.vp-blog .vp-blog-tabs > .vp-blog-facet__chips a {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-bottom: -1px;
+  padding: 10px 0;
+  border-bottom: 2px solid transparent;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    border-color 0.25s,
+    color 0.25s,
+    opacity 0.25s;
+}
+
+.vp-blog .vp-blog-tabs > .vp-blog-facet__chips a:hover {
+  color: var(--vp-c-text-1);
+}
+
+.vp-blog .vp-blog-tabs > .vp-blog-facet__chips a.is-active {
+  border-bottom-color: var(--vp-blog-accent);
+  color: var(--vp-c-text-1);
+}
+
+/* A tab's post count: small and quiet beside its name. */
+.vp-blog-tabs > .vp-blog-facet__chips .vp-blog-facet__count {
+  margin-left: 6px;
+}
+
+.vp-blog-tabs > .vp-blog-facet__chips a.is-active .vp-blog-facet__count {
+  color: var(--vp-c-text-2);
+}
+
+/*
+ * Keywords: a line of light chips under the bar, most used first, ending in
+ * "+N more", which opens out every keyword alphabetically. Without category
+ * tabs, they sit on the bar itself.
+ */
+.vp-blog-keywords {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  min-width: 0;
+  padding-top: 12px;
+}
+
+.vp-blog-browse__bar > .vp-blog-keywords {
+  flex: 1 1 auto;
+  align-self: center;
+  padding: 8px 0;
+}
+
+.vp-blog-keywords > .vp-blog-facet__chips {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.vp-blog-keywords > .vp-blog-facet__chips p {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
-  align-items: center;
-  margin: 0;
+  gap: 6px;
 }
 
-.vp-blog .vp-blog-facet__chips a {
+.vp-blog .vp-blog-keywords a {
+  display: inline-flex;
   flex: none;
-  margin: 0;
-  white-space: nowrap;
-}
-
-/* The post count in a chip: a small counter badge inside it. */
-.vp-blog-facet__count {
-  display: inline-block;
-  min-width: 18px;
-  margin-left: 6px;
-  padding: 0 6px;
+  gap: 6px;
+  align-items: center;
+  padding: 0 10px;
   border-radius: 999px;
-  background: var(--vp-c-bg);
+  background: var(--vp-blog-tag-bg);
   color: var(--vp-c-text-2);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 16px;
-  text-align: center;
-  vertical-align: 1px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 26px;
+  white-space: nowrap;
+  text-decoration: none;
   transition:
     background-color 0.25s,
+    color 0.25s,
+    opacity 0.25s;
+}
+
+.vp-blog .vp-blog-keywords a:hover {
+  color: var(--vp-c-text-1);
+}
+
+.vp-blog .vp-blog-keywords a.is-active {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
+}
+
+.vp-blog-keywords a.is-active .vp-blog-facet__count {
+  color: inherit;
+}
+
+/* An open line: every keyword, wrapping, under a field that narrows them when there are many. */
+.vp-blog-keywords.is-open {
+  flex-wrap: wrap;
+}
+
+.vp-blog-keywords.is-open > .vp-blog-facet__chips {
+  flex-basis: 100%;
+}
+
+/* "More": the categories past `categoryLimit`, in a drop-down that reads as one more tab. */
+.vp-blog-tabs > .vp-blog-menu-wrap {
+  margin-left: 20px;
+}
+
+.vp-blog-tabs .vp-blog-menu__button {
+  height: 100%;
+  margin-bottom: -1px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  font-size: 14px;
+}
+
+.vp-blog-tabs .vp-blog-menu__button:hover,
+.vp-blog-tabs .vp-blog-menu[open] .vp-blog-menu__button {
+  background: none;
+  color: var(--vp-c-text-1);
+}
+
+.vp-blog-tabs .vp-blog-menu-wrap.is-active .vp-blog-menu__button {
+  border-bottom-color: var(--vp-blog-accent);
+  background: none;
+  color: var(--vp-c-text-1);
+}
+
+.vp-blog-tabs .vp-blog-menu__panel {
+  right: auto;
+  left: 0;
+}
+
+/* The drop-downs and the RSS link, at the end of the toolbar. */
+.vp-blog-browse__tools {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+  padding: 6px 0;
+}
+
+.vp-blog-menu-wrap {
+  position: relative;
+  display: flex;
+}
+
+/* `.vp-blog` first: VitePress's `.vp-doc` gives `<summary>` margins of its own. */
+.vp-blog .vp-blog-menu {
+  margin: 0;
+}
+
+.vp-blog .vp-blog-menu__button {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  height: 32px;
+  margin: 0;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.25s,
+    border-color 0.25s,
     color 0.25s;
 }
 
-.vp-blog-facet__chips a:hover .vp-blog-facet__count,
-.vp-blog-facet__chips a.is-active .vp-blog-facet__count {
-  background: var(--vp-blog-accent);
-  /* The page background, so the number stays readable on the accent in light and dark mode. */
-  color: var(--vp-c-bg);
+.vp-blog-menu__button::-webkit-details-marker {
+  display: none;
 }
 
-/* A chip that would show no posts with the other filters kept. */
-.vp-blog .vp-blog-facet__chips a.is-empty {
-  opacity: 0.45;
+.vp-blog-menu__button:hover,
+.vp-blog-menu[open] .vp-blog-menu__button {
+  background: var(--vp-c-default-soft);
+  color: var(--vp-c-text-1);
 }
 
-.vp-blog .vp-blog-facet__chips a.is-empty:hover {
-  opacity: 0.8;
+.vp-blog-menu__button:focus-visible,
+.vp-blog-menu__clear:focus-visible,
+.vp-blog-browse__rss a:focus-visible {
+  outline: 2px solid var(--vp-blog-accent);
+  outline-offset: 2px;
 }
 
-/* "+N more" and "Show fewer": a quiet text button at the end of the row's first line. */
-.vp-blog-facet__more {
-  justify-self: start;
-  padding: 0 6px;
-  border-radius: 6px;
+.vp-blog-menu__chevron {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: transform 0.2s;
+}
+
+.vp-blog-menu[open] .vp-blog-menu__chevron {
+  transform: rotate(180deg);
+}
+
+/* A drop-down with a value: the value in the accent, joined to the × that takes it off. */
+.vp-blog-browse__tools .vp-blog-menu-wrap.is-active .vp-blog-menu__button {
+  border-color: var(--vp-blog-accent);
+  background: var(--vp-c-brand-soft);
   color: var(--vp-blog-accent);
-  font-size: 12px;
+}
+
+.vp-blog-browse__tools .vp-blog-menu-wrap.is-active:has(.vp-blog-menu__clear:not([hidden])) .vp-blog-menu__button {
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+.vp-blog-menu__text {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vp-blog .vp-blog-menu__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: 1px solid var(--vp-blog-accent);
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
+  transition: background-color 0.25s;
+}
+
+.vp-blog .vp-blog-menu__clear:hover {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-text-1);
+}
+
+/* The panel a drop-down opens: a floating list, its choices one to a line with their counts on the right. */
+.vp-blog-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-elv);
+  box-shadow: var(--vp-shadow-3);
+  font-size: 14px;
+}
+
+.vp-blog-menu__panel .vp-blog-facet__chips p,
+.vp-blog-menu__all p,
+.vp-blog-menu__year-name p {
+  display: flex;
+  flex-direction: column;
+}
+
+.vp-blog .vp-blog-menu__panel a {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--vp-c-text-1);
+  line-height: 20px;
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    opacity 0.25s;
+}
+
+.vp-blog .vp-blog-menu__panel a:hover {
+  background: var(--vp-c-default-soft);
+}
+
+.vp-blog .vp-blog-menu__panel a.is-active {
+  color: var(--vp-blog-accent);
   font-weight: 600;
-  line-height: 28px;
+}
+
+/* The choice that takes the filter off, set apart from the values. */
+.vp-blog-menu__all {
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.vp-blog-facet__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vp-blog-facet__count {
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vp-blog-menu__panel a.is-active .vp-blog-facet__count {
+  color: inherit;
+}
+
+/* A choice that would show no posts with the other filters kept. */
+.vp-blog .vp-blog-browse a.is-empty {
+  opacity: 0.4;
+}
+
+.vp-blog .vp-blog-browse a.is-empty:hover {
+  opacity: 0.75;
+}
+
+/* The date drop-down: each year, then its months four to a line. */
+.vp-blog-menu--date .vp-blog-menu__panel {
+  width: 248px;
+}
+
+.vp-blog-menu__year + .vp-blog-menu__year {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.vp-blog-menu__year-name > p > span {
+  padding: 6px 10px;
+  color: var(--vp-c-text-2);
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.vp-blog-menu__year-name a {
+  font-weight: 600;
+}
+
+.vp-blog-menu__months p {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+
+.vp-blog .vp-blog-menu__months a {
+  justify-content: center;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.vp-blog-menu__months .vp-blog-facet__count {
+  display: none;
+}
+
+/* "+N more" and "Show fewer", at the end of the keywords. */
+.vp-blog-facet__more {
+  flex: none;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--vp-blog-accent);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 26px;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -430,15 +751,15 @@
   background: var(--vp-c-brand-soft);
 }
 
-/* The field that narrows a long open row, above its chips. */
+/* The field that narrows a long open line, above it. */
 .vp-blog-facet__filter {
   display: block;
   box-sizing: border-box;
   width: min(100%, 18rem);
   margin: 0 0 8px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--vp-c-bg);
   color: var(--vp-c-text-1);
   font-size: 13px;
@@ -452,90 +773,109 @@
 
 .vp-blog-facet__empty {
   margin: 0;
+  padding: 6px 10px;
   color: var(--vp-blog-meta-color);
   font-size: 13px;
 }
 
-/* The "Subscribe" link at the end of the first row. */
-.vp-blog-facet__aside p {
-  margin: 0;
+/* The RSS link: its icon alone, its words kept for screen readers. */
+.vp-blog-browse__rss .vp-blog-rss a {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: background-color 0.25s;
+}
+
+.vp-blog-browse__rss .vp-blog-rss a:hover {
+  background: var(--vp-c-default-soft);
+}
+
+.vp-blog-browse__rss .vp-blog-rss__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.vp-blog-browse__rss .vp-blog-rss__text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
 @media (pointer: coarse) {
+  .vp-blog .vp-blog-menu__panel a {
+    padding: 10px 12px;
+  }
+
+  .vp-blog-menu__button,
+  .vp-blog-browse__rss .vp-blog-rss a {
+    height: 40px;
+  }
+
+  .vp-blog .vp-blog-keywords a,
   .vp-blog-facet__more {
     line-height: 32px;
   }
 
-  .vp-blog-facet__label {
-    line-height: 32px;
+  .vp-blog-browse__rss .vp-blog-rss a {
+    width: 40px;
   }
 }
 
 @media (max-width: 639px) {
-  .vp-blog-facet {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    gap: 4px 8px;
-    align-items: center;
+  .vp-blog-browse__tools {
+    gap: 4px;
   }
 
-  .vp-blog-facet__label {
-    font-size: 12px;
-  }
-
-  /* One line per row, scrolled sideways, its end fading while there is more. */
-  .vp-blog-facet:not(.is-open) .vp-blog-facet__chips {
+  /* Keywords are one line that scrolls sideways, its end fading while there is more. */
+  .vp-blog-keywords:not(.is-open) > .vp-blog-facet__chips {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
 
-  .vp-blog-facet:not(.is-open) .vp-blog-facet__chips::-webkit-scrollbar {
+  .vp-blog-keywords:not(.is-open) > .vp-blog-facet__chips::-webkit-scrollbar {
     display: none;
   }
 
-  .vp-blog-facet:not(.is-open) .vp-blog-facet__chips p {
+  .vp-blog-keywords:not(.is-open) > .vp-blog-facet__chips p {
     flex-wrap: nowrap;
   }
 
-  .vp-blog-facet.is-scrollable:not(.is-open) .vp-blog-facet__chips {
+  .vp-blog-keywords.is-scrollable:not(.is-open) > .vp-blog-facet__chips {
     mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
   }
 
-  /* An open row wraps under its label, at full width. */
-  .vp-blog-facet.is-open .vp-blog-facet__chips {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  /* The drop-down opens across the bar's full width. */
+  .vp-blog-browse__tools .vp-blog-menu-wrap {
+    position: static;
   }
 
-  /* The RSS icon alone, its words kept for screen readers. */
-  .vp-blog-facet__aside .vp-blog-rss__text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .vp-blog-browse__tools .vp-blog-menu__panel {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
   }
 }
 
-/* The active filters: how many posts match, a removable chip for each filter, and a link to clear them all. */
+/* While a filter is on: how many posts match, and a link that takes every filter off. */
 .vp-blog-filter {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 12px;
   align-items: center;
-  margin: 16px 0;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: var(--vp-c-default-soft);
-  font-size: 14px;
+  margin: 0 0 16px;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
 }
 
 .vp-blog-filter__count {
-  margin-right: 4px;
   color: var(--vp-c-text-1);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .vp-blog .vp-blog-filter__chip {
@@ -543,19 +883,12 @@
   gap: 4px;
   align-items: center;
   padding: 0 4px 0 10px;
-  border: 1px solid var(--vp-blog-accent);
   border-radius: 999px;
-  background: var(--vp-c-bg);
-  color: var(--vp-c-text-1);
-  font-size: 13px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-blog-accent);
   font-weight: 500;
   line-height: 24px;
   text-decoration: none;
-}
-
-.vp-blog-filter__kind {
-  color: var(--vp-blog-meta-color);
-  font-weight: 400;
 }
 
 .vp-blog-filter__remove {
@@ -565,21 +898,18 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  color: var(--vp-blog-meta-color);
   font-size: 14px;
   line-height: 1;
-  transition:
-    background-color 0.25s,
-    color 0.25s;
 }
 
-.vp-blog .vp-blog-filter__chip:hover .vp-blog-filter__remove {
-  background: var(--vp-c-brand-soft);
+.vp-blog .vp-blog-filter__clear {
   color: var(--vp-blog-accent);
+  font-weight: 500;
+  text-decoration: none;
 }
 
-.vp-blog-filter__clear {
-  margin-left: auto;
+.vp-blog .vp-blog-filter__clear:hover {
+  text-decoration: underline;
 }
 
 .vp-blog-pinned {

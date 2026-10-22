@@ -119,15 +119,24 @@ export interface BlogLabels {
   undated: string;
   /** Accessible name of the browse panel above a blog page's posts. */
   browse: string;
-  /** Label of the browse panel's category row. */
+  /** The first category tab, which shows posts in every category. */
+  all: string;
+  /** The tab that holds the categories past `categoryLimit`. */
+  moreCategories: string;
+  /** Button of the date drop-down. */
+  date: string;
+  /** The date drop-down's first choice, which takes the date filter off. */
+  allTime: string;
+
+  /** Accessible name of the category tabs. */
   categories: string;
-  /** Label of the browse panel's keyword row. */
+  /** Accessible name of the line of keyword chips, and of the field that narrows it. */
   tags: string;
-  /** Label of the browse panel's year row. */
+  /** Accessible name of the date drop-down's list. */
   archive: string;
-  /** Names a category filter among the active filters: "Category". */
+  /** @deprecated No longer shown: the category tabs show the active category. */
   category: string;
-  /** Names a keyword filter among the active filters: "Keyword". */
+  /** Names a keyword filter: "Keyword". */
   tag: string;
   /** How many posts the active filters match: "{n} posts". */
   postCount: string;
@@ -137,7 +146,7 @@ export interface BlogLabels {
   noMatches: string;
   /** Accessible name of an active filter's remove link: "Remove filter: {filter}". */
   removeFilter: string;
-  /** Link that clears every filter. */
+  /** Link beside the post count that takes every filter off. */
   showAll: string;
   /** Button that shows the rest of a browse row: "+{n} more". */
   more: string;
@@ -193,6 +202,10 @@ export const DEFAULT_LABELS: BlogLabels = {
   noPosts: 'No posts yet.',
   undated: 'Undated',
   browse: 'Browse posts',
+  all: 'All',
+  moreCategories: 'More',
+  date: 'Date',
+  allTime: 'All time',
   categories: 'Categories',
   tags: 'Keywords',
   archive: 'Archive',
@@ -255,17 +268,17 @@ export interface BlogIndexConfig {
   showTags: boolean;
   /** Show the post's category above its title on each card. */
   showCategory: boolean;
-  /** List every category above the posts, each one a filter. */
+  /** Show the categories above the posts as tabs, each one a filter. */
   categoryList: boolean;
-  /** Categories shown before "+N more", most used first. `0` shows them all. */
+  /** Category tabs, most used first; the rest go under "More". `0` makes them all tabs. */
   categoryLimit: number;
-  /** List every keyword above the posts, each one a filter. */
+  /** Show the keywords above the posts as a line of chips, each one a filter. */
   tagList: boolean;
-  /** Keywords shown before "+N more", most used first. `0` shows them all. */
+  /** Keyword chips shown, most used first, before "+N more". `0` shows them all. */
   tagLimit: number;
   /** Leave keywords used by fewer posts than this out of the browse panel. They still show on cards. */
   tagMinCount: number;
-  /** List the years and months that have posts above the posts, each one a filter. */
+  /** Offer the years and months that have posts in a drop-down above the posts, each one a filter. */
   archive: boolean;
   /** Posts per page. `0` shows them all on one page. */
   pageSize: number;

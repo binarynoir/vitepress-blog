@@ -357,49 +357,17 @@ export function collectArchive(posts: PostPage[], timeZone: string): ArchiveYear
   return [...years.values()].sort(newestFirst).map((year) => ({ ...year, months: [...year.months].sort(newestFirst) }));
 }
 
-/** A browse chip: a filter link holding its name and post count, with an optional tooltip. */
-function renderChip(name: string, count: number, url: string, title = ''): string {
+/** A browse option: a filter link holding its name and, unless `count` is `null`, its post count, with an optional tooltip. */
+function renderOption(name: string, count: number | null, url: string, title = ''): string {
   const tooltip = title ? ` "${title.replace(/"/g, '&quot;')}"` : '';
-  return (
-    `[<span class="vp-blog-facet__name">${escapeMarkdown(name)}</span> ` +
-    `<span class="vp-blog-facet__count">${count}</span>](${url}${tooltip})`
-  );
+  const counter = count === null ? '' : ` <span class="vp-blog-facet__count">${count}</span>`;
+  return `[<span class="vp-blog-facet__name">${escapeMarkdown(name)}</span>${counter}](${url}${tooltip})`;
 }
 
-interface FacetRow {
-  facet: FilterParam;
-  label: string;
-  chips: string[];
-  /** The row's name for screen readers, when it isn't `label`. */
-  ariaLabel?: string;
-  /** How many chips show before "+N more". `0` shows them all. */
-  limit?: number;
-  /** Added to the row's opening tag. */
-  attributes?: string;
-  /** Markdown beside the chips, at the end of the row: the first row holds the "Subscribe" link. */
-  aside?: string;
-}
-
-/**
- * One row of the browse panel: a label, its chips, and anything beside them.
- * The client shows the first `limit` chips and a "+N more" button for the
- * rest; without it, every chip shows.
- */
-function renderFacet(row: FacetRow): string[] {
-  const { facet, label, chips, ariaLabel = label, limit = 0, attributes = '', aside = '' } = row;
-  const limited = limit && chips.length > limit ? ` data-limit="${limit}"` : '';
-  return [
-    `<div class="vp-blog-facet vp-blog-facet--${facet}" role="group" aria-label="${escapeHtml(ariaLabel)}" data-vp-blog-facet="${facet}"${limited}${attributes}>`,
-    `<span class="vp-blog-facet__label" aria-hidden="true">${escapeTemplateText(label)}</span>`,
-    '<div class="vp-blog-facet__chips">',
-    '',
-    chips.join(' '),
-    '',
-    '</div>',
-    ...block('vp-blog-facet__aside', aside),
-    '</div>',
-  ];
-}
+const CHEVRON =
+  '<svg class="vp-blog-menu__chevron" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+  '<path fill="currentColor" d="M12 15.5a1 1 0 0 1-.7-.29l-5-5a1 1 0 0 1 1.4-1.42l4.3 4.3 4.3-4.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-.7.29z"></path>' +
+  '</svg>';
 
 /** Whether choosing one of `values` would narrow `total` posts: a single value on every post would not. */
 function canNarrow(values: FacetCount[], total: number): boolean {
@@ -412,26 +380,69 @@ function byUse(a: FacetCount, b: FacetCount): number {
 }
 
 /**
- * The browse panel above a blog page's posts: a row of categories, a row of
- * keywords, and an archive of years, each chip a filter with its post count.
- * Below the years, one row of months per year, which the client shows for the
- * year being viewed. A row is left out when it can't narrow the posts, such
- * as one category that every post is in; with only one year, the archive is
- * just that year's months. Categories and keywords come most used first, so
- * the first `categoryLimit` and `tagLimit` of them are the ones that show
- * before "+N more". The "Subscribe" link sits at the end of the first row.
+ * A drop-down of filters: a `<details>` whose button names the filter (the
+ * client swaps in the chosen value), and a panel of links. It opens and
+ * closes without JavaScript; the client closes it on a click outside, on
+ * Escape and once a link is followed.
+ */
+function renderMenu(facet: string, label: string, panel: string[], attributes = ''): string[] {
+  return [
+    `<div class="vp-blog-menu-wrap" data-vp-blog-menu="${facet}">`,
+    `<details class="vp-blog-menu vp-blog-menu--${facet}" data-vp-blog-facet="${facet}"${attributes}>`,
+    `<summary class="vp-blog-menu__button"><span class="vp-blog-menu__text" data-label="${escapeHtml(label)}">${escapeTemplateText(label)}</span>${CHEVRON}</summary>`,
+    '<div class="vp-blog-menu__panel">',
+    ...panel,
+    '</div>',
+    '</details>',
+    '</div>',
+  ];
+}
+
+/**
+ * The browse panel above a blog page's posts: a bar, then a line of
+ * keywords. On the bar, categories (the few values a post is one of) are
+ * tabs with their counts, "All" first, most used next; those past
+ * `categoryLimit` go under "More". Dates, used now and then, are a
+ * drop-down at its end, each year with its months, then the RSS link.
+ * Keywords are chips below, most used first, the first `tagLimit` before
+ * "+N more"; without tabs they sit on the bar instead. A part is left out
+ * when it can't narrow the posts, such as one category that every post is in.
  */
 function renderBrowse(posts: PostPage[], index: IndexPage, context: RenderContext): string[] {
   const { labels } = context;
   const { locale, timeZone } = context.dates;
   const { categoryList, categoryLimit, tagList, tagLimit, tagMinCount, archive: showArchive } = index.index;
   const blog = index.routePath;
-  const rows: FacetRow[] = [];
+  const option = (name: string, param: FilterParam, value: string, count: number | null, title = '') =>
+    renderOption(name, count, toFilterUrl(blog, param, value), title);
+  const tabs: string[] = [];
+  const tools: string[] = [];
 
   const categories = categoryList ? collectCategories(posts).sort(byUse) : [];
   if (canNarrow(categories, posts.length)) {
-    const chips = categories.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'category', value)));
-    rows.push({ facet: 'category', label: labels.categories, chips, limit: categoryLimit });
+    const shown = categoryLimit ? categories.slice(0, categoryLimit) : categories;
+    const rest = categories.slice(shown.length);
+    tabs.push(
+      `<div class="vp-blog-tabs" role="group" aria-label="${escapeHtml(labels.categories)}" data-vp-blog-facet="category">`,
+      ...block(
+        'vp-blog-facet__chips',
+        [
+          option(labels.all, 'category', '', posts.length),
+          ...shown.map(({ value, count }) => option(value, 'category', value, count)),
+        ].join(' '),
+      ),
+      ...(rest.length
+        ? renderMenu(
+            'more',
+            labels.moreCategories,
+            block(
+              'vp-blog-facet__chips',
+              rest.map(({ value, count }) => option(value, 'category', value, count)).join(' '),
+            ),
+          )
+        : []),
+      '</div>',
+    );
   }
 
   const tags = tagList
@@ -440,42 +451,58 @@ function renderBrowse(posts: PostPage[], index: IndexPage, context: RenderContex
         .filter(({ count }) => count >= tagMinCount)
         .sort(byUse)
     : [];
+  const keywords: string[] = [];
   if (canNarrow(tags, posts.length)) {
-    const chips = tags.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'tag', value)));
-    rows.push({ facet: 'tag', label: labels.tags, chips, limit: tagLimit });
+    const limited = tagLimit && tags.length > tagLimit ? ` data-limit="${tagLimit}"` : '';
+    keywords.push(
+      `<div class="vp-blog-keywords" role="group" aria-label="${escapeHtml(labels.tags)}" data-vp-blog-facet="tag"${limited}>`,
+      ...block('vp-blog-facet__chips', tags.map(({ value, count }) => option(value, 'tag', value, count)).join(' ')),
+      '</div>',
+    );
   }
 
   const archive = showArchive ? collectArchive(posts, timeZone) : [];
-  const monthChips = (months: FacetCount[]) =>
-    months.map(({ value, count }) =>
-      renderChip(
-        formatMonth(value, locale, { month: 'short' }),
-        count,
-        toFilterUrl(blog, 'month', value),
-        formatMonth(value, locale, { month: 'long', year: 'numeric' }),
-      ),
-    );
-  if (archive.length === 1 && canNarrow(archive[0].months, posts.length)) {
-    // One year: choosing it would narrow nothing, so the archive is its months.
-    const [year] = archive;
-    const ariaLabel = `${labels.archive} ${year.value}`;
-    const attributes = ` data-year="${year.value}"`;
-    rows.push({ facet: 'month', label: labels.archive, chips: monthChips(year.months), ariaLabel, attributes });
-  } else if (archive.length > 1) {
-    const years = archive.map(({ value, count }) => renderChip(value, count, toFilterUrl(blog, 'year', value)));
-    rows.push({ facet: 'year', label: labels.archive, chips: years });
+  const months = archive.flatMap((year) => year.months);
+  if (archive.length > 1 || canNarrow(months, posts.length)) {
+    const panel = [...block('vp-blog-menu__all', option(labels.allTime, 'year', '', null))];
     for (const year of archive) {
-      const ariaLabel = `${labels.archive} ${year.value}`;
-      const attributes = ` data-year="${year.value}" hidden`;
-      rows.push({ facet: 'month', label: year.value, chips: monthChips(year.months), ariaLabel, attributes });
+      // With one year, choosing it would narrow nothing: it is just a heading over its months.
+      const heading =
+        archive.length > 1
+          ? option(year.value, 'year', year.value, year.count)
+          : `<span class="vp-blog-facet__name">${year.value}</span>`;
+      const monthLinks = year.months.map(({ value, count }) =>
+        option(
+          formatMonth(value, locale, { month: 'short' }),
+          'month',
+          value,
+          count,
+          formatMonth(value, locale, { month: 'long', year: 'numeric' }),
+        ),
+      );
+      panel.push(
+        `<div class="vp-blog-menu__year" data-year="${year.value}">`,
+        ...block('vp-blog-menu__year-name', heading),
+        ...block('vp-blog-menu__months', monthLinks.join(' ')),
+        '</div>',
+      );
     }
+    tools.push(...renderMenu('date', labels.date, panel, ` aria-label="${escapeHtml(labels.archive)}"`));
   }
 
-  if (rows.length === 0) return [];
-  rows[0].aside = renderRssLink(index, context);
+  if (tabs.length === 0 && tools.length === 0 && keywords.length === 0) return [];
+  // Without tabs, the keywords take their place on the bar rather than a line of their own.
+  const inline = tabs.length === 0;
   return [
     `<nav class="vp-blog-browse" aria-label="${escapeHtml(labels.browse)}">`,
-    ...rows.flatMap(renderFacet),
+    '<div class="vp-blog-browse__bar">',
+    ...(inline ? keywords : tabs),
+    '<div class="vp-blog-browse__tools">',
+    ...tools,
+    ...block('vp-blog-browse__rss', renderRssLink(index, context)),
+    '</div>',
+    '</div>',
+    ...(inline ? [] : keywords),
     '</nav>',
   ];
 }
@@ -485,14 +512,11 @@ function renderClientAttributes(index: IndexPage, context: RenderContext): strin
   const { labels } = context;
   const attributes: Record<string, string> = {
     'data-page-size': String(index.index.pageSize),
-    // For writing a `?month=` filter's name: "October 2026".
-    'data-locale': context.locale,
     'data-label-show-all': labels.showAll,
     'data-label-previous': labels.previous,
     'data-label-next': labels.next,
     'data-label-pages': labels.pages,
     'data-label-announcements': labels.announcements,
-    'data-label-category': labels.category,
     'data-label-tag': labels.tag,
     'data-label-post-count': labels.postCount,
     'data-label-post-count-one': labels.postCountOne,

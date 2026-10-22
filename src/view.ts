@@ -8,8 +8,7 @@
  */
 
 const ITEM = '[data-vp-blog-item]';
-/** Links that filter the blog: the browse panel's chips, and the category and keyword links on cards. */
-const FILTER_LINKS = '.vp-blog-facet__chips a, .vp-blog-card__category a, .vp-blog-card__tags a';
+const OPEN_MENUS = 'details.vp-blog-menu[open]';
 
 interface BlogLabels {
   showAll: string;
@@ -17,7 +16,6 @@ interface BlogLabels {
   next: string;
   pages: string;
   announcements: string;
-  category: string;
   tag: string;
   postCount: string;
   postCountOne: string;
@@ -37,7 +35,6 @@ function readLabels(blog: HTMLElement): BlogLabels {
     next: dataset.labelNext ?? 'Next',
     pages: dataset.labelPages ?? 'Pages',
     announcements: dataset.labelAnnouncements ?? 'Announcements',
-    category: dataset.labelCategory ?? 'Category',
     tag: dataset.labelTag ?? 'Keyword',
     postCount: dataset.labelPostCount ?? '{n} posts',
     postCountOne: dataset.labelPostCountOne ?? '{n} post',
@@ -165,7 +162,7 @@ function markActive(anchor: HTMLAnchorElement, active: boolean): void {
   else anchor.removeAttribute('aria-current');
 }
 
-/** A row with more chips than this gets a field to narrow them, when it is open. */
+/** A line of chips with more than this gets a field to narrow them, once "+N more" opens it out. */
 const FILTER_FIELD_MIN = 30;
 
 function chipName(anchor: HTMLAnchorElement): string {
@@ -248,16 +245,19 @@ function layoutRow(row: HTMLElement, labels: BlogLabels): void {
 }
 
 /**
- * Brings the browse panel in step with the filter. Each chip links to the
- * view with it toggled, and counts the posts it would show with the other
- * filters kept, so a reader can see where every next step leads; chips that
- * would show nothing are dimmed. The months of the year in view show below
- * the years.
+ * Brings the browse panel in step with the filter. Each tab and choice links
+ * to the view with it toggled, and counts the posts it would show with the
+ * other filters kept, so a reader can see where every next step leads;
+ * choices that would show nothing are dimmed. A drop-down's button shows its
+ * chosen value, with a link beside it that takes the filter off. Every
+ * drop-down closes, since this runs once a choice has been followed.
  */
 function syncBrowse(blog: HTMLElement, url: URL, filter: BlogFilter, markers: Element[], labels: BlogLabels): void {
   const browse = blog.querySelector<HTMLElement>('.vp-blog-browse');
   if (!browse) return;
-  for (const anchor of browse.querySelectorAll<HTMLAnchorElement>('.vp-blog-facet__chips a')) {
+  setUpMenus(browse);
+  for (const anchor of browse.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+    if (anchor.classList.contains('vp-blog-menu__clear')) continue;
     const link = readFilterLink(anchor);
     if (!link) continue;
     const active = isActive(link, filter);
@@ -268,41 +268,83 @@ function syncBrowse(blog: HTMLElement, url: URL, filter: BlogFilter, markers: El
     const counter = anchor.querySelector('.vp-blog-facet__count');
     if (counter) counter.textContent = String(count);
   }
-  // With only one year, its months always show.
-  const months = [...browse.querySelectorAll<HTMLElement>('[data-vp-blog-facet="month"]')];
-  for (const row of months) row.hidden = months.length > 1 && row.dataset.year !== filter.date.slice(0, 4);
-  for (const row of browse.querySelectorAll<HTMLElement>('.vp-blog-facet')) {
-    layoutRow(row, labels);
-    // On narrow screens a row is one line that scrolls sideways; its end fades while there is more.
-    const chips = row.querySelector<HTMLElement>('.vp-blog-facet__chips');
-    if (chips) row.classList.toggle('is-scrollable', chips.scrollWidth > chips.clientWidth + 1);
+  for (const row of browse.querySelectorAll<HTMLElement>('[data-limit]')) layoutRow(row, labels);
+  for (const wrap of browse.querySelectorAll<HTMLElement>('[data-vp-blog-menu]')) syncMenu(wrap, url, filter, labels);
+  for (const menu of browse.querySelectorAll<HTMLDetailsElement>(OPEN_MENUS)) menu.open = false;
+  // The tabs, and on narrow screens the keywords, are one line that scrolls sideways; its end fades while there is more.
+  for (const line of browse.querySelectorAll<HTMLElement>('.vp-blog-tabs, .vp-blog-keywords')) {
+    const chips = line.querySelector<HTMLElement>(':scope > .vp-blog-facet__chips');
+    if (chips) line.classList.toggle('is-scrollable', chips.scrollWidth > chips.clientWidth + 1);
   }
 }
 
-/** The name a filter value is shown with: as a chip or card link spells it, else as the URL gave it. */
-function findName(blog: HTMLElement, facet: 'category' | 'tag', value: string): string {
-  for (const anchor of blog.querySelectorAll<HTMLAnchorElement>(FILTER_LINKS)) {
-    const link = readFilterLink(anchor);
-    if (link?.facet === facet && link.value === value) {
-      const name = (anchor.querySelector('.vp-blog-facet__name') ?? anchor).textContent?.trim();
-      if (name) return name;
+/**
+ * A drop-down's button: the filter's name, or the value chosen in it (the
+ * month over its year). Beside a keyword or date drop-down with a value, a
+ * link that takes it off.
+ */
+function syncMenu(wrap: HTMLElement, url: URL, filter: BlogFilter, labels: BlogLabels): void {
+  const facet = wrap.dataset.vpBlogMenu ?? '';
+  const choices = [...wrap.querySelectorAll<HTMLAnchorElement>('.vp-blog-menu__panel a.is-active')]
+    .filter((anchor) => !anchor.closest('.vp-blog-menu__all'))
+    .sort((a, b) => (b.dataset.vpBlogValue ?? '').length - (a.dataset.vpBlogValue ?? '').length);
+  const chosen = choices[0];
+  const name = chosen ? chosen.title || chipName(chosen) : '';
+  const text = wrap.querySelector<HTMLElement>('.vp-blog-menu__text');
+  if (text) text.textContent = name || text.dataset.label || '';
+  wrap.classList.toggle('is-active', !!chosen);
+
+  let clear = wrap.querySelector<HTMLAnchorElement>('.vp-blog-menu__clear');
+  if (facet !== 'tag' && facet !== 'date') return;
+  if (!clear) {
+    clear = link('', '', 'vp-blog-menu__clear');
+    clear.innerHTML = CLEAR_ICON;
+    wrap.append(clear);
+  }
+  clear.hidden = !chosen;
+  clear.href = toHref(url, { ...filter, [facet]: '' });
+  const kind = facet === 'tag' ? `${labels.tag} ` : '';
+  clear.setAttribute('aria-label', labels.removeFilter.replace('{filter}', `${kind}${name}`));
+}
+
+const CLEAR_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" ' +
+  'd="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12 5.7 16.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"></path></svg>';
+
+/** Opening one drop-down closes any other, once per panel. */
+function setUpMenus(browse: HTMLElement): void {
+  if (browse.dataset.vpBlogMenus) return;
+  browse.dataset.vpBlogMenus = '';
+  for (const menu of browse.querySelectorAll<HTMLDetailsElement>('details.vp-blog-menu')) {
+    menu.addEventListener('toggle', () => {
+      if (!menu.open) return;
+      for (const other of document.querySelectorAll<HTMLDetailsElement>(OPEN_MENUS)) {
+        if (other !== menu) other.open = false;
+      }
+    });
+  }
+  if (menusDismissable) return;
+  menusDismissable = true;
+  // A click outside an open drop-down closes it, as does following a choice in it.
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    for (const menu of document.querySelectorAll<HTMLDetailsElement>(OPEN_MENUS)) {
+      if (!target || !menu.contains(target) || target.closest('.vp-blog-menu__panel a')) menu.open = false;
     }
-  }
-  return value;
+  });
+  // Escape closes it, and puts focus back on its button.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    for (const menu of document.querySelectorAll<HTMLDetailsElement>(OPEN_MENUS)) {
+      // A field with text clears it first.
+      if (event.target instanceof HTMLInputElement && event.target.value && menu.contains(event.target)) continue;
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    }
+  });
 }
 
-/** A year as written, or a month as "October 2026" in the blog's locale. */
-function formatDate(date: string, locale: string): string {
-  if (date.length === 4) return date;
-  const [year, month] = date.split('-').map(Number);
-  try {
-    return new Intl.DateTimeFormat(locale, { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(
-      Date.UTC(year, month - 1, 1, 12),
-    );
-  } catch {
-    return date;
-  }
-}
+let menusDismissable = false;
 
 function element(tag: string, className: string, text = ''): HTMLElement {
   const node = document.createElement(tag);
@@ -317,58 +359,23 @@ function link(text: string, href: string, className: string): HTMLAnchorElement 
   return anchor;
 }
 
-/** One active filter: what kind it is (`''` for a date or announcements), its name, and the view without it. */
-interface ActiveFilter {
-  kind: string;
-  name: string;
-  without: BlogFilter;
-}
-
-function listActiveFilters(blog: HTMLElement, filter: BlogFilter, labels: BlogLabels): ActiveFilter[] {
-  const active: ActiveFilter[] = [];
-  if (filter.announcements) {
-    active.push({ kind: '', name: labels.announcements, without: { ...filter, announcements: false } });
-  }
-  if (filter.category) {
-    const name = findName(blog, 'category', filter.category);
-    active.push({ kind: labels.category, name, without: { ...filter, category: '' } });
-  }
-  if (filter.tag) {
-    active.push({ kind: labels.tag, name: findName(blog, 'tag', filter.tag), without: { ...filter, tag: '' } });
-  }
-  if (filter.date) {
-    const name = formatDate(filter.date, blog.dataset.locale || document.documentElement.lang || 'en-US');
-    active.push({ kind: '', name, without: { ...filter, date: '' } });
-  }
-  return active;
-}
-
 /**
- * The active filters, above the posts: how many posts match, a chip for each
- * filter that removes just that one, and a link that clears them all. All of
- * it is written as text: the values come from the URL.
+ * Under the toolbar, while a filter is on: how many posts match, and a link
+ * that takes every filter off. The filters themselves show in the toolbar;
+ * only `?announcements`, which has no place there, gets a chip that removes it.
  */
-function renderFilter(
-  slot: HTMLElement,
-  blog: HTMLElement,
-  url: URL,
-  filter: BlogFilter,
-  count: number,
-  labels: BlogLabels,
-): void {
-  const active = listActiveFilters(blog, filter, labels);
-  slot.hidden = active.length === 0;
+function renderFilter(slot: HTMLElement, url: URL, filter: BlogFilter, count: number, labels: BlogLabels): void {
+  slot.hidden = !(filter.category || filter.tag || filter.date || filter.announcements);
   if (slot.hidden) return slot.replaceChildren();
 
   const summary = count === 0 ? labels.noMatches : count === 1 ? labels.postCountOne : labels.postCount;
   const parts: Node[] = [element('span', 'vp-blog-filter__count', summary.replace('{n}', String(count)))];
-  for (const { kind, name, without } of active) {
-    const chip = link('', toHref(url, without), 'vp-blog-filter__chip');
-    chip.setAttribute('aria-label', labels.removeFilter.replace('{filter}', kind ? `${kind} ${name}` : name));
-    if (kind) chip.append(element('span', 'vp-blog-filter__kind', kind), ' ');
+  if (filter.announcements) {
+    const chip = link('', toHref(url, { ...filter, announcements: false }), 'vp-blog-filter__chip');
+    chip.setAttribute('aria-label', labels.removeFilter.replace('{filter}', labels.announcements));
     const remove = element('span', 'vp-blog-filter__remove', '×');
     remove.setAttribute('aria-hidden', 'true');
-    chip.append(name, remove);
+    chip.append(labels.announcements, remove);
     parts.push(chip);
   }
   const clear = { category: '', tag: '', date: '', announcements: false };
@@ -449,7 +456,7 @@ export function applyBlogView(blog: HTMLElement, url: URL): BlogViewState {
   }
 
   const banner = blog.querySelector<HTMLElement>('[data-vp-blog-filter]');
-  if (banner) renderFilter(banner, blog, url, filter, pinned.length + rest.length, labels);
+  if (banner) renderFilter(banner, url, filter, pinned.length + rest.length, labels);
   const pagination = blog.querySelector<HTMLElement>('[data-vp-blog-pagination]');
   if (pagination) renderPagination(pagination, url, filter, page, pageCount, labels);
   syncBrowse(blog, url, filter, markers, labels);

@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every page links the main blog's feed with `<link rel="alternate">`, so feed readers find it from the home page or any other page. The `primaryFeed` option chooses another blog page, or `false` turns it off
 - `subscribeTo`, `subscribeHint`, `feedAddress`, `copy`, `copied`, `openInReader`, `viewFeed`, `aboutFeeds` and `close` labels
 - `openSubscribeDialog()` in the client entry, and the `BlogFeedData` and `BlogFeedItem` types
+- `all`, `moreCategories`, `date` and `allTime` labels, for the browse panel
+
+### Changed
+
+- The browse panel is a bar on a single rule and one line of keywords, instead of a stack of labelled rows. On the bar, categories are tabs with their counts, "All" first, and dates are a drop-down of years with their months beneath them, showing the chosen date with a × beside it; the RSS link ends the bar as an icon. Keywords are chips below it, without the counter badges. Without categories, the keywords sit on the bar. On phones the tabs and keywords each scroll sideways
+- Under the panel, the active filters are now one line: the post count and "Show all posts". The panel shows each filter, so only `?announcements` still gets a chip
+- `categoryLimit` now counts category tabs, the rest going under "More", and defaults to `5` (was `8`)
+- The `category` label is no longer shown, and blog pages no longer carry `data-locale` or `data-label-category`
 
 ## [0.6.0] - 2026-10-21
 
