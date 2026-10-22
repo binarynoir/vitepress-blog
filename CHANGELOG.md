@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README: use a BinaryNoir logo that shows on light and dark backgrounds
+
 ## [0.7.0] - 2026-10-22
 
 ### Added
