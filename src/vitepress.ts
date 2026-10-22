@@ -4,14 +4,22 @@ import type { MarkdownIt } from 'markdown-it';
 import type { Plugin, ViteDevServer } from 'vite';
 import type { HeadConfig, PageData, SiteConfig, TransformContext, TransformPageContext, UserConfig } from 'vitepress';
 import { renderDismissedScript, resolveAnnouncements } from './announcements.js';
-import { findBlogsListing, isIndex, isPost, listBlogPosts, type IndexPage, type PostPage } from './collect.js';
+import {
+  findBlogsListing,
+  findPrimaryFeedBlog,
+  isIndex,
+  isPost,
+  listBlogPosts,
+  type IndexPage,
+  type PostPage,
+} from './collect.js';
 import { mayHaveBlogFrontmatter } from './frontmatter.js';
-import { renderFeed, resolvePostImage, toFeedPath, toPageUrl, type SiteLocation } from './feed.js';
+import { renderFeed, resolveFeedData, resolvePostImage, toFeedPath, toPageUrl, type SiteLocation } from './feed.js';
 import { blogMarkdown } from './plugin.js';
 import { hasWidget, widgetPages } from './widget.js';
 import { fingerprintBlogSource, loadBlogPages, type BlogPage } from './scan.js';
 import type { BlogOptions } from './types.js';
-import { ANNOUNCEMENTS_KEY, joinUrl } from './util.js';
+import { ANNOUNCEMENTS_KEY, FEEDS_KEY, joinUrl } from './util.js';
 
 const DEFAULT_FEED_LIMIT = 20;
 const PACKAGE_NAME = '@binarynoir/vitepress-blog';
@@ -54,6 +62,20 @@ export function attachAnnouncements(siteConfig: SiteConfig, options: BlogOptions
   return changed;
 }
 
+/**
+ * Puts every feed on VitePress's site data, where `useBlog()` reads it to open
+ * the subscribe dialog from links to them. Returns whether the data changed.
+ */
+export function attachFeeds(siteConfig: SiteConfig, options: BlogOptions = {}): boolean {
+  const site = siteConfig.site as SiteConfig['site'] & Record<string, unknown>;
+  const location = resolveSiteLocation(siteConfig, options);
+  const data = location ? resolveFeedData(loadPages(siteConfig, options).filter(isIndex), location, options) : null;
+  const changed = JSON.stringify(site[FEEDS_KEY] ?? null) !== JSON.stringify(data);
+  if (data) site[FEEDS_KEY] = data;
+  else delete site[FEEDS_KEY];
+  return changed;
+}
+
 /** The posts in a blog's feed: no drafts, newest first, up to the feed's limit. */
 function listFeedPosts(pages: BlogPage[], index: IndexPage, options: BlogOptions): PostPage[] {
   const limit = index.index.feed?.limit ?? options.feedLimit ?? DEFAULT_FEED_LIMIT;
@@ -87,7 +109,9 @@ function feedLink(index: IndexPage, base: string): HeadConfig {
 /**
  * `<head>` tags for blog pages: a feed link on each blog page, and on each
  * post Open Graph and Twitter card tags (title, summary, image, dates) plus
- * links to the feeds that carry it. Use it from VitePress's `transformHead`:
+ * links to the feeds that carry it. Every page also links the primary feed
+ * (see the `primaryFeed` option), so feed readers find it from any page. Use
+ * it from VitePress's `transformHead`:
  *
  * ```ts
  * transformHead: (context) => blogHead(context, options),
@@ -97,13 +121,26 @@ function feedLink(index: IndexPage, base: string): HeadConfig {
  * without a site URL (the `siteUrl` option or `sitemap.hostname`).
  */
 export function blogHead(context: TransformContext, options: BlogOptions = {}): HeadConfig[] {
+  const { siteConfig } = context;
+  const pages = loadPages(siteConfig, options);
+  const site = resolveSiteLocation(siteConfig, options);
+  const head = pageHead(context, pages, site);
+  // Feeds are only written with a site URL, so without one there is nothing to link.
+  const primary = site ? findPrimaryFeedBlog(pages, options.primaryFeed) : null;
+  if (primary) {
+    const link = feedLink(primary, siteConfig.site?.base ?? '/');
+    if (!head.some(([tag, attributes]) => tag === 'link' && attributes.href === link[1].href)) head.push(link);
+  }
+  return head;
+}
+
+/** The tags for the page itself: a blog page's feed and URL, or a post's social tags and feeds. */
+function pageHead(context: TransformContext, pages: BlogPage[], site: SiteLocation | null): HeadConfig[] {
   const { pageData, siteConfig } = context;
   const frontmatter = pageData.frontmatter ?? {};
   if (!pageData.filePath || (!frontmatter.blog && !frontmatter['blog-index'])) return [];
-  const pages = loadPages(siteConfig, options);
   const page = pages.find((candidate) => candidate.relativePath === pageData.filePath);
   if (!page) return [];
-  const site = resolveSiteLocation(siteConfig, options);
   const base = siteConfig.site?.base ?? '/';
   const head: HeadConfig[] = [];
 
@@ -221,9 +258,12 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
       for (const module of server.moduleGraph.getModulesByFile(file) ?? []) server.moduleGraph.invalidateModule(module);
     }
   };
-  /** Re-reads the announcements; when they changed, the site data is served afresh. */
-  const refreshAnnouncements = (server: ViteDevServer): boolean => {
-    if (!siteConfig || !attachAnnouncements(siteConfig, options)) return false;
+  /** Re-reads the announcements and feeds; when they changed, the site data is served afresh. */
+  const refreshSiteData = (server: ViteDevServer): boolean => {
+    if (!siteConfig) return false;
+    // Both run, rather than `||` stopping at the first change.
+    const changed = [attachAnnouncements(siteConfig, options), attachFeeds(siteConfig, options)];
+    if (!changed.some(Boolean)) return false;
     const module = server.moduleGraph.getModuleById(SITE_DATA_MODULE);
     if (module) server.moduleGraph.invalidateModule(module);
     return true;
@@ -239,7 +279,10 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
     },
     configResolved(config) {
       siteConfig = (config as { vitepress?: SiteConfig }).vitepress;
-      if (siteConfig) attachAnnouncements(siteConfig, options);
+      if (siteConfig) {
+        attachAnnouncements(siteConfig, options);
+        attachFeeds(siteConfig, options);
+      }
     },
     transform(code, id) {
       if (!siteConfig || !id.endsWith('.md') || !(mayHaveBlogFrontmatter(code) || hasWidget(code))) return null;
@@ -250,7 +293,7 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
       const refresh = (file: string) => {
         if (!siteConfig || !file.endsWith('.md')) return;
         invalidate(server, dependentFiles());
-        refreshAnnouncements(server);
+        refreshSiteData(server);
         server.ws.send({ type: 'full-reload' });
       };
       server.watcher.on('add', refresh).on('unlink', refresh);
@@ -286,9 +329,9 @@ export function blogVitePlugin(options: BlogOptions = {}): Plugin {
     },
     handleHotUpdate({ file, modules, server }) {
       if (!siteConfig || !file.endsWith('.md')) return;
-      // Every page shows the banner, so a change to it reloads them all. Checked
+      // Every page shows the banner and opens the dialog, so a change to either reloads them all. Checked
       // first: a page that stops being an announcement is no longer a post.
-      if (refreshAnnouncements(server)) {
+      if (refreshSiteData(server)) {
         invalidate(server, dependentFiles());
         server.ws.send({ type: 'full-reload' });
         return [];

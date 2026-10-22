@@ -143,6 +143,22 @@ export function findBlogsListing(pages: BlogPage[], post: PostPage): IndexPage[]
     );
 }
 
+/**
+ * The blog whose feed every page links: the one at `primaryFeed` (its source
+ * path), or by default the main blog with a feed whose page is shallowest.
+ * `null` when `primaryFeed` is `false` or names no blog with a feed.
+ */
+export function findPrimaryFeedBlog(pages: BlogPage[], primaryFeed?: string | false): IndexPage | null {
+  if (primaryFeed === false) return null;
+  const withFeed = pages.filter(isIndex).filter((index) => index.index.feed);
+  if (primaryFeed !== undefined) {
+    const wanted = primaryFeed.replace(/^\/+/, '');
+    return withFeed.find((index) => index.relativePath === wanted) ?? null;
+  }
+  const depth = (index: IndexPage) => index.routePath.split('/').length;
+  return withFeed.filter((index) => index.index.scope === 'site').sort((a, b) => depth(a) - depth(b))[0] ?? null;
+}
+
 /** Every announcement, newest first. Drafts only with `drafts`. */
 export function listAnnouncements(pages: BlogPage[], drafts: boolean): PostPage[] {
   return pages

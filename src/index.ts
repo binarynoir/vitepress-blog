@@ -8,6 +8,8 @@ export type {
   BlogAnnouncementItem,
   BlogAuthor,
   BlogFeedConfig,
+  BlogFeedData,
+  BlogFeedItem,
   BlogGroupBy,
   BlogIndexConfig,
   BlogLabels,

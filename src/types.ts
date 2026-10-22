@@ -76,6 +76,14 @@ export interface BlogOptions {
    * on a site with a site URL (without one, no feeds are written). Default: `true`.
    */
   rssLink?: boolean;
+  /**
+   * The blog whose feed every page of the site links with
+   * `<link rel="alternate">`, so a feed reader given any page's address (the
+   * home page, say) finds it: the blog page's source path, such as
+   * `'blog/index.md'`. `false` links no feed from pages outside the blogs.
+   * Default: the main blog (`scope: site`) with a feed, the shallowest first.
+   */
+  primaryFeed?: string | false;
   /** Words the plugin writes on pages, for translating. `{n}`, `{blog}`, `{filter}` and `{row}` are filled in. */
   labels?: Partial<BlogLabels>;
 }
@@ -147,6 +155,24 @@ export interface BlogLabels {
   subscribe: string;
   /** Tooltip of the RSS link: "RSS feed for {blog}". */
   rssFeed: string;
+  /** Heading of the subscribe dialog: "Subscribe to {blog}". */
+  subscribeTo: string;
+  /** Under the dialog's heading, above the feed's address. */
+  subscribeHint: string;
+  /** Accessible name of the field holding the feed's address. */
+  feedAddress: string;
+  /** Button that copies the feed's address. */
+  copy: string;
+  /** The copy button once it has copied. */
+  copied: string;
+  /** Link that hands the feed to the visitor's feed reader app (a `feed:` link). */
+  openInReader: string;
+  /** Link to the feed itself, as XML. */
+  viewFeed: string;
+  /** Link to aboutfeeds.com, for visitors new to feeds. */
+  aboutFeeds: string;
+  /** Accessible name of the dialog's close button. */
+  close: string;
 }
 
 export const DEFAULT_LABELS: BlogLabels = {
@@ -186,6 +212,15 @@ export const DEFAULT_LABELS: BlogLabels = {
   pages: 'Pages',
   subscribe: 'Subscribe',
   rssFeed: 'RSS feed for {blog}',
+  subscribeTo: 'Subscribe to {blog}',
+  subscribeHint: 'Copy this address into your feed reader app.',
+  feedAddress: 'Feed address',
+  copy: 'Copy',
+  copied: 'Copied',
+  openInReader: 'Open in your feed reader',
+  viewFeed: 'View the feed',
+  aboutFeeds: 'What is a feed?',
+  close: 'Close',
 };
 
 export type BlogScope = 'site' | 'section';
@@ -293,4 +328,31 @@ export interface BlogAnnouncementData {
   /** The blog page filtered to announcements (`/blog/?announcements`), without the base, or `''` when no blog lists them. */
   listLink: string;
   labels: Pick<BlogLabels, 'announcement' | 'announcementCount' | 'dismiss'>;
+}
+
+/** One feed, as the subscribe dialog shows it. */
+export interface BlogFeedItem {
+  /** The feed's URL path with the site's base, as links to it are written: `/blog/feed.xml`. */
+  path: string;
+  /** Its absolute URL on the published site, to subscribe to. */
+  url: string;
+  /** The blog's name, or the feed's own `title`. */
+  title: string;
+}
+
+/** What the subscribe dialog reads from VitePress's site data. */
+export interface BlogFeedData {
+  feeds: BlogFeedItem[];
+  labels: Pick<
+    BlogLabels,
+    | 'subscribeTo'
+    | 'subscribeHint'
+    | 'feedAddress'
+    | 'copy'
+    | 'copied'
+    | 'openInReader'
+    | 'viewFeed'
+    | 'aboutFeeds'
+    | 'close'
+  >;
 }

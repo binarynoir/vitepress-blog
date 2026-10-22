@@ -682,6 +682,128 @@
 }
 
 /*
+ * The subscribe dialog a link to a feed opens: the feed's address to copy, a
+ * link that hands it to a feed reader app, and the feed itself.
+ */
+.vp-blog-subscribe {
+  width: min(480px, calc(100vw - 32px));
+  max-width: none;
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--vp-blog-card-radius);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  box-shadow: var(--vp-shadow-4);
+}
+
+.vp-blog-subscribe::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.vp-blog-subscribe__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--vp-c-text-2);
+  transition:
+    background-color 0.25s,
+    color 0.25s;
+}
+
+.vp-blog-subscribe__close:hover {
+  background: var(--vp-c-default-soft);
+  color: var(--vp-c-text-1);
+}
+
+.vp-blog-subscribe__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 32px 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.vp-blog-subscribe__icon {
+  flex-shrink: 0;
+  color: #f26522;
+}
+
+.vp-blog-subscribe__hint {
+  margin: 0 0 16px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+}
+
+.vp-blog-subscribe__field {
+  display: flex;
+  gap: 8px;
+}
+
+.vp-blog-subscribe__address {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+}
+
+.vp-blog-subscribe__address:focus {
+  border-color: var(--vp-blog-accent);
+  outline: none;
+}
+
+.vp-blog-subscribe__copy {
+  flex-shrink: 0;
+  min-width: 72px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--vp-button-brand-bg);
+  color: var(--vp-button-brand-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vp-blog-subscribe__copy:hover {
+  background: var(--vp-button-brand-hover-bg);
+}
+
+.vp-blog-subscribe__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 16px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vp-blog-subscribe__links a {
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+}
+
+.vp-blog-subscribe__links a:hover {
+  text-decoration: underline;
+}
+
+/* The way to subscribe in one click, ahead of the others. */
+.vp-blog-subscribe__reader {
+  margin-right: auto;
+}
+
+/*
  * The announcement banner, in the theme's `layout-top` slot: fixed across the
  * top of the window, one line high. While it shows, VitePress's
  * --vp-layout-top-height moves the nav bar, sidebar and content down by its

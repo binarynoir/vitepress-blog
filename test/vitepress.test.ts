@@ -1,5 +1,5 @@
 import MarkdownIt from 'markdown-it';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -11,7 +11,8 @@ import {
   type TransformContext,
   type UserConfig,
 } from 'vitepress';
-import { blogHead, blogPageData, withBlog, writeBlogFeeds } from '../src/vitepress.js';
+import { attachFeeds, blogHead, blogPageData, withBlog, writeBlogFeeds } from '../src/vitepress.js';
+import type { BlogOptions } from '../src/types.js';
 import { frontmatter, Site } from './helpers.js';
 
 // VitePress 2 types `markdown.config` against `markdown-it-async`'s MarkdownIt,
@@ -36,12 +37,25 @@ function siteConfig(overrides: Record<string, unknown> = {}): SiteConfig {
   } as unknown as SiteConfig;
 }
 
-function head(filePath: string, frontmatterData: Record<string, unknown>, config = siteConfig()): HeadConfig[] {
-  return blogHead({
-    pageData: { filePath, frontmatter: frontmatterData },
-    siteConfig: config,
-  } as unknown as TransformContext);
+function head(
+  filePath: string,
+  frontmatterData: Record<string, unknown>,
+  config = siteConfig(),
+  options: BlogOptions = {},
+): HeadConfig[] {
+  return blogHead(
+    {
+      pageData: { filePath, frontmatter: frontmatterData },
+      siteConfig: config,
+    } as unknown as TransformContext,
+    options,
+  );
 }
+
+const primaryFeedLink: HeadConfig = [
+  'link',
+  { rel: 'alternate', type: 'application/rss+xml', title: 'Blog', href: '/blog/feed.xml' },
+];
 
 beforeAll(() => {
   site
@@ -100,8 +114,48 @@ describe('blogHead', () => {
     expect(tags[0][1].href).toBe('/docs/blog/feed.xml');
   });
 
-  it('ignores other pages', () => {
-    expect(head('other.md', { title: 'x' })).toEqual([]);
+  it("links the main blog's feed from every other page", () => {
+    expect(head('other.md', { title: 'x' })).toEqual([primaryFeedLink]);
+    expect(head('', {})).toEqual([primaryFeedLink]);
+  });
+
+  it('links the primary feed only once from pages that already link it', () => {
+    const links = head('blog/post.md', { blog: {} }).filter(([tag]) => tag === 'link');
+    expect(links).toEqual([primaryFeedLink]);
+  });
+
+  it('takes the primary feed from the primaryFeed option, or none', () => {
+    expect(head('other.md', {}, siteConfig(), { primaryFeed: 'blog/index.md' })).toEqual([primaryFeedLink]);
+    expect(head('other.md', {}, siteConfig(), { primaryFeed: false })).toEqual([]);
+    expect(head('other.md', {}, siteConfig(), { primaryFeed: 'missing/index.md' })).toEqual([]);
+  });
+
+  it('links no primary feed without a site URL, since none is written', () => {
+    expect(head('other.md', {}, siteConfig({ userConfig: {} }))).toEqual([]);
+  });
+});
+
+describe('attachFeeds', () => {
+  it('puts every feed on the site data, with its path and absolute URL', () => {
+    const config = siteConfig({ site: { base: '/docs/' } });
+    expect(attachFeeds(config)).toBe(true);
+    const data = (config.site as unknown as Record<string, unknown>).blogFeeds as {
+      feeds: unknown[];
+      labels: Record<string, string>;
+    };
+    expect(data.feeds).toEqual([
+      { path: '/docs/blog/feed.xml', url: 'https://example.com/docs/blog/feed.xml', title: 'Blog' },
+    ]);
+    expect(data.labels.subscribeTo).toBe('Subscribe to {blog}');
+    expect(attachFeeds(config)).toBe(false);
+  });
+
+  it('removes them without a site URL', () => {
+    const config = siteConfig();
+    attachFeeds(config);
+    config.userConfig = {} as SiteConfig['userConfig'];
+    expect(attachFeeds(config)).toBe(true);
+    expect('blogFeeds' in (config.site as object)).toBe(false);
   });
 });
 
@@ -170,7 +224,7 @@ describe('withBlog', () => {
     await config.buildEnd!(siteConfig({ userConfig: {} }));
 
     expect(calls).toEqual(['markdown', 'head', 'pageData', 'buildEnd']);
-    expect(tags).toEqual([['meta', { name: 'mine', content: 'x' }]]);
+    expect(tags).toEqual([primaryFeedLink, ['meta', { name: 'mine', content: 'x' }]]);
     expect(config.vite?.plugins).toHaveLength(1);
   });
 });
@@ -201,6 +255,14 @@ describe('a real VitePress build', () => {
       expect(home).toContain('class="vp-blog-widget"');
       expect(home).toContain('<a href="/team-a/launch">We launched</a>');
       expect(home).toContain('<a href="/blog/">Everything on the blog</a>');
+      // The main blog's feed, linked from a page that isn't part of any blog.
+      expect(home).toContain('<link rel="alternate" type="application/rss+xml" title="Blog" href="/blog/feed.xml">');
+      // The feeds the subscribe dialog opens for, in the site data the build bundles.
+      const assets = readdirSync(path.join(out, 'assets'), { recursive: true, encoding: 'utf8' });
+      const bundled = assets
+        .filter((file) => file.endsWith('.js'))
+        .map((file) => readFileSync(path.join(out, 'assets', file), 'utf8'));
+      expect(bundled.some((code) => /blogFeeds.*\/team-a\/feed\.xml/s.test(code))).toBe(true);
 
       // The announcement banner, rendered on the server above the nav bar: the newest, and a count of both.
       expect(home).toMatch(

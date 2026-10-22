@@ -4,11 +4,18 @@
 // namespace they are just `undefined`.
 import * as vitepress from 'vitepress';
 import { nextTick, onMounted, watch } from 'vue';
+import { handleFeedClick } from './subscribe.js';
+import type { BlogFeedData } from './types.js';
+import { FEEDS_KEY } from './util.js';
 import { applyBlogViews } from './view.js';
+
+// The theme's `setup()` runs once per app, but the listener must only ever be added once.
+let feedClicksHandled = false;
 
 /**
  * Turns on filtering (`?category=`, `?tag=`, `?year=`, `?month=`) and pagination (`?page=`) on blog
- * pages. Call it from your theme's `setup()`:
+ * pages, and the subscribe dialog that links to a feed open (see `subscribe.ts`). Call it from your
+ * theme's `setup()`:
  *
  * ```ts
  * // .vitepress/theme/index.ts
@@ -32,6 +39,13 @@ import { applyBlogViews } from './view.js';
  */
 export function useBlog(): void {
   if (!vitepress.inBrowser) return;
+  const { site } = vitepress.useData();
+  if (!feedClicksHandled) {
+    feedClicksHandled = true;
+    document.addEventListener('click', (event) =>
+      handleFeedClick(event, (site.value as unknown as Record<string, unknown>)[FEEDS_KEY] as BlogFeedData | undefined),
+    );
+  }
   const route = vitepress.useRoute();
   const apply = () => nextTick(() => applyBlogViews());
   onMounted(() => {
@@ -42,4 +56,5 @@ export function useBlog(): void {
 }
 
 export { BlogAnnouncementBanner } from './banner.js';
+export { openSubscribeDialog } from './subscribe.js';
 export { applyBlogView, applyBlogViews, readFilter, type BlogFilter, type BlogViewState } from './view.js';

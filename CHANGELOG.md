@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A subscribe dialog: with `useBlog()`, a click on any link to one of the site's feeds (the "Subscribe" links, a navbar feed link, a feed link in Markdown) opens a dialog with the feed's address to copy, an "Open in your feed reader" `feed:` link, the feed itself and a link to aboutfeeds.com. Static hosts serve feeds as `application/xml`, so browsers showed raw XML instead of offering a feed reader. Without JavaScript, or with a modifier key, the link opens the feed as before
+- Every page links the main blog's feed with `<link rel="alternate">`, so feed readers find it from the home page or any other page. The `primaryFeed` option chooses another blog page, or `false` turns it off
+- `subscribeTo`, `subscribeHint`, `feedAddress`, `copy`, `copied`, `openInReader`, `viewFeed`, `aboutFeeds` and `close` labels
+- `openSubscribeDialog()` in the client entry, and the `BlogFeedData` and `BlogFeedItem` types
+
 ## [0.6.0] - 2026-10-21
 
 ### Changed

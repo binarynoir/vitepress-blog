@@ -39,7 +39,9 @@ blog:
 - **Posts** (`blog` in the frontmatter) get a byline under their title, links to
   the newer and older posts, and Open Graph and Twitter card tags.
 - **Every blog page gets an RSS feed**, written beside it at build time and
-  linked from its `<head>` and from each post it carries.
+  linked from its `<head>` and from each post it carries. The main blog's
+  feed is linked from every page, and links to a feed open a subscribe dialog
+  rather than raw XML.
 - Lists are plain Markdown generated at build time, with every post in the
   HTML, so they show up in search and work without JavaScript. Links go
   through VitePress, so they get your `base` and `cleanUrls` and are checked
@@ -504,6 +506,45 @@ post the feed carries, so feed readers find it from any of them. In
 `vitepress dev` the feeds are served from memory, with links to the dev server
 if you have no site URL.
 
+### The primary feed
+
+Every other page, the home page included, links the main blog's feed with
+`<link rel="alternate">` too. A feed reader given just the site's address then
+finds it. That is the main blog (`scope: site`) with a feed whose page is
+shallowest; set `primaryFeed` to a blog page's source path
+(`'news/index.md'`) to choose another, or `false` to link none.
+
+Keep a feed's URL once it is published: subscribers' readers have it saved,
+and a moved feed loses them without a word.
+
+### The subscribe dialog
+
+Static hosts such as GitHub Pages serve a feed as `application/xml`, so a
+browser shows a link to it as a page of raw XML instead of offering a feed
+reader. With `useBlog()` in your theme, a click on any link to one of the
+site's feeds opens a dialog instead. That covers the "Subscribe" links, a
+feed link in your navbar, and feed links written in Markdown. The dialog has:
+
+- the feed's address, with a button that copies it;
+- **Open in your feed reader**, a `feed:` link that hands the feed to the
+  reader app the visitor has installed;
+- **View the feed**, the XML itself;
+- **What is a feed?**, a link to [aboutfeeds.com](https://aboutfeeds.com/)
+  for visitors new to feeds.
+
+The link itself still points at the feed. Without JavaScript, or with a
+modifier key held (to open it in a new tab, say), it opens the feed as before.
+A navbar link needs `target: '_self'`, or VitePress's router treats it as a
+page:
+
+```ts
+socialLinks: [{ icon: 'rss', link: '/blog/feed.xml', ariaLabel: 'RSS feed', target: '_self' }],
+```
+
+Styling feeds with an XSLT stylesheet was the older fix, but browsers are
+removing XSLT: Chrome turns it off in version 158 (November 2026), and Firefox
+and Safari plan to follow.
+
 ### Images in feeds and social cards
 
 Vite renames images it bundles, and the new name isn't known until the build
@@ -513,27 +554,28 @@ link that copy. Public paths (`/cover.png`) and URLs are linked as they are.
 
 ## Options
 
-| Option           | Default                                                         | What it does                                                                                                          |
-| ---------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `siteUrl`        | `sitemap.hostname`                                              | Absolute URL of the published site, for feeds and social tags.                                                        |
-| `authors`        | `{}`                                                            | Authors posts can name by key: `{ jane: { name, url, email } }` or `{ jane: 'Jane Doe' }`.                            |
-| `defaultAuthor`  | none                                                            | Author for posts that don't name one.                                                                                 |
-| `locale`         | `'en-US'`                                                       | Locale for dates and author lists ("Jane and Sam").                                                                   |
-| `dateFormat`     | `{ dateStyle: 'long' }`                                         | `Intl.DateTimeFormat` options for dates.                                                                              |
-| `timeFormat`     | `{ hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }` | `Intl.DateTimeFormat` options for times, as in "2:30 PM EDT". Only dates given with a time show one.                  |
-| `timeZone`       | `'UTC'`                                                         | The IANA time zone (`'America/New_York'`) that times without an offset are in, and that dates and times are shown in. |
-| `wordsPerMinute` | `200`                                                           | For "5 min read". `0` hides reading time.                                                                             |
-| `byline`         | `true`                                                          | Author, date and tags under each post's title.                                                                        |
-| `cover`          | `false`                                                         | Each post's image under its byline.                                                                                   |
-| `postNav`        | `true`                                                          | Newer and older post links at the end of each post, in place of VitePress's previous / next links.                    |
-| `drafts`         | `false`                                                         | List drafts, marked. Pass `process.env.NODE_ENV !== 'production'` for dev only.                                       |
-| `stripTags`      | `true`                                                          | Remove [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/) syntax from titles and summaries.              |
-| `feedLimit`      | `20`                                                            | Most posts in each feed.                                                                                              |
-| `imagesDir`      | `'blog-images'`                                                 | Output folder for copied post images.                                                                                 |
-| `pageSize`       | `10`                                                            | Posts per page on blog pages that don't set `pageSize`. `0` turns pages off.                                          |
-| `pinLimit`       | `0` (all)                                                       | Most pinned posts on blog pages that don't set `pinLimit`.                                                            |
-| `rssLink`        | `true`                                                          | A "Subscribe" RSS link on blog pages and blocks that don't set `rssLink`.                                             |
-| `labels`         | English                                                         | Words the plugin writes, for translating. See below.                                                                  |
+| Option           | Default                                                         | What it does                                                                                                                  |
+| ---------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `siteUrl`        | `sitemap.hostname`                                              | Absolute URL of the published site, for feeds and social tags.                                                                |
+| `authors`        | `{}`                                                            | Authors posts can name by key: `{ jane: { name, url, email } }` or `{ jane: 'Jane Doe' }`.                                    |
+| `defaultAuthor`  | none                                                            | Author for posts that don't name one.                                                                                         |
+| `locale`         | `'en-US'`                                                       | Locale for dates and author lists ("Jane and Sam").                                                                           |
+| `dateFormat`     | `{ dateStyle: 'long' }`                                         | `Intl.DateTimeFormat` options for dates.                                                                                      |
+| `timeFormat`     | `{ hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }` | `Intl.DateTimeFormat` options for times, as in "2:30 PM EDT". Only dates given with a time show one.                          |
+| `timeZone`       | `'UTC'`                                                         | The IANA time zone (`'America/New_York'`) that times without an offset are in, and that dates and times are shown in.         |
+| `wordsPerMinute` | `200`                                                           | For "5 min read". `0` hides reading time.                                                                                     |
+| `byline`         | `true`                                                          | Author, date and tags under each post's title.                                                                                |
+| `cover`          | `false`                                                         | Each post's image under its byline.                                                                                           |
+| `postNav`        | `true`                                                          | Newer and older post links at the end of each post, in place of VitePress's previous / next links.                            |
+| `drafts`         | `false`                                                         | List drafts, marked. Pass `process.env.NODE_ENV !== 'production'` for dev only.                                               |
+| `stripTags`      | `true`                                                          | Remove [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/) syntax from titles and summaries.                      |
+| `feedLimit`      | `20`                                                            | Most posts in each feed.                                                                                                      |
+| `imagesDir`      | `'blog-images'`                                                 | Output folder for copied post images.                                                                                         |
+| `pageSize`       | `10`                                                            | Posts per page on blog pages that don't set `pageSize`. `0` turns pages off.                                                  |
+| `pinLimit`       | `0` (all)                                                       | Most pinned posts on blog pages that don't set `pinLimit`.                                                                    |
+| `rssLink`        | `true`                                                          | A "Subscribe" RSS link on blog pages and blocks that don't set `rssLink`.                                                     |
+| `primaryFeed`    | the main blog                                                   | The blog page (`'news/index.md'`) whose feed every page links. `false` links none. See [The primary feed](#the-primary-feed). |
+| `labels`         | English                                                         | Words the plugin writes, for translating. See below.                                                                          |
 
 ```ts
 withBlog(config, {
@@ -575,6 +617,15 @@ withBlog(config, {
     pages: 'Seiten',
     subscribe: 'Abonnieren',
     rssFeed: 'RSS-Feed für {blog}',
+    subscribeTo: '{blog} abonnieren',
+    subscribeHint: 'Kopiere diese Adresse in deinen Feedreader.',
+    feedAddress: 'Feed-Adresse',
+    copy: 'Kopieren',
+    copied: 'Kopiert',
+    openInReader: 'Im Feedreader öffnen',
+    viewFeed: 'Feed ansehen',
+    aboutFeeds: 'Was ist ein Feed?',
+    close: 'Schließen',
   },
 });
 ```
@@ -645,6 +696,8 @@ Bug reports, feature requests and questions are all welcome. Please open them on
 
 Pull requests are welcome too.
 
+<!-- binarynoir:more:start (generated from binarynoir.github.io/products.json) -->
+
 ## More from BinaryNoir
 
 <p align="center">
@@ -656,40 +709,17 @@ Pull requests are welcome too.
   </a>
 </p>
 
-Blog is one of a family of open-source VitePress plugins, editor extensions and command-line tools from BinaryNoir. Browse them all, with documentation and live demos, at **[binarynoir.tech](https://binarynoir.tech)**.
+Blog is one of a family of open-source tools from BinaryNoir.
 
-**VitePress plugins**
+**Pairs well with Blog**
 
-- [Auto Sidebar](https://binarynoir.tech/plugins/auto-sidebar): sidebar built from your folders
-- [Auto Navbar](https://binarynoir.tech/plugins/auto-navbar): navbar built from your folders
-- [Sidebar Accordion](https://binarynoir.tech/plugins/sidebar-accordion): one open sidebar group at a time
-- [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/): inline status badges and tagged-pages lists
 - [Reading Time Tag](https://binarynoir.tech/plugins/reading-time-tag): reading-time estimates
-- [Glossary Tooltips](https://binarynoir.tech/plugins/glossary/): hover definitions from one glossary file
-- [Text Style](https://binarynoir.tech/plugins/text-style): colored and sized text inline
-- [Downloads](https://binarynoir.tech/plugins/downloads): downloadable files next to your pages
+- [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/): inline status badges and tagged-pages lists
 - [Exclude](https://binarynoir.tech/plugins/exclude/): keep pages out of the build with a `.exclude` file
-- [README Index](https://binarynoir.tech/plugins/readme-index/): `README.md` index pages for VuePress migrations
-- [HTML Escape](https://binarynoir.tech/plugins/html-escape/): stray tags and braces shown as text, not build errors
-- [Broken Links](https://binarynoir.tech/plugins/broken-links): dead links shown as text, not build errors
 
-**Vite plugins**
+**See them all:** VitePress plugins, Vite plugins, editor extensions and command-line tools, with documentation and live demos, at **[binarynoir.tech](https://binarynoir.tech)**.
 
-- [Optimize Images](https://binarynoir.tech/plugins/optimize-images): smaller images in the build output
-- [Image Fallback](https://binarynoir.tech/plugins/image-fallback): a placeholder instead of a failed build
-
-**Editor extensions**
-
-- [Tags for Markdown for VS Code](https://binarynoir.tech/plugins/markdown-tags/vscode): status badges in the VS Code Markdown preview
-- [Tags for Markdown for Obsidian](https://binarynoir.tech/plugins/markdown-tags/obsidian): status badges in Obsidian
-
-**Command-line tools**
-
-- [NoirWatch](https://binarynoir.tech/apps/noirwatch): get notified when a web page changes
-- [NoirCon](https://binarynoir.tech/apps/noircon): get notified when a site, server or port goes down
-- [callrx](https://binarynoir.tech/apps/callrx): amateur radio callsign lookup
-
-Website, docs and demos: **[binarynoir.tech](https://binarynoir.tech)**
+<!-- binarynoir:more:end -->
 
 ## Author
 

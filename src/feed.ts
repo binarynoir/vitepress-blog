@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { IndexPage, PostPage } from './collect.js';
+import { DEFAULT_LABELS, type BlogFeedData, type BlogOptions } from './types.js';
 import { isExternalUrl, joinUrl, toUrlPath } from './util.js';
 
 /** Where the site is published, for the absolute links feeds and social cards need. */
@@ -29,6 +30,36 @@ export function toPageUrl(routePath: string, site: SiteLocation): string {
 /** A blog page's feed file, relative to the output folder: `news/feed.xml`. */
 export function toFeedPath(index: IndexPage): string {
   return path.posix.join(path.posix.dirname(index.routePath), index.index.feed!.path);
+}
+
+/**
+ * The subscribe dialog's data: every feed the build writes, with its path as
+ * links to it are written and its absolute URL. `null` with no feeds.
+ */
+export function resolveFeedData(indexes: IndexPage[], site: SiteLocation, options: BlogOptions): BlogFeedData | null {
+  const feeds = indexes
+    .filter((index) => index.index.feed)
+    .map((index) => ({
+      path: joinUrl(site.base, toFeedPath(index)),
+      url: toAbsoluteUrl(toFeedPath(index), site),
+      title: index.index.feed?.title ?? index.title,
+    }));
+  if (feeds.length === 0) return null;
+  const labels = { ...DEFAULT_LABELS, ...options.labels };
+  return {
+    feeds,
+    labels: {
+      subscribeTo: labels.subscribeTo,
+      subscribeHint: labels.subscribeHint,
+      feedAddress: labels.feedAddress,
+      copy: labels.copy,
+      copied: labels.copied,
+      openInReader: labels.openInReader,
+      viewFeed: labels.viewFeed,
+      aboutFeeds: labels.aboutFeeds,
+      close: labels.close,
+    },
+  };
 }
 
 export interface ResolvedImage {
