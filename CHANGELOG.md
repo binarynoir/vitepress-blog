@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-11-18
+
 ### Fixed
 
 - In the `list` layout on wide screens, post images keep their 16:9 frame instead of stretching to the height of the text beside them and being cropped to fit, so the whole image shows. The image is inset by the card's padding, sits at the top and has rounded corners, to line up with the text beside it
