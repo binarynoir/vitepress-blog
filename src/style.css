@@ -16,8 +16,10 @@
   --vp-blog-announcement-color: var(--vp-button-brand-text);
 }
 
-/* Markdown inside the generated blocks is wrapped in <p>; its margins are handled here instead. */
+/* Markdown inside the generated blocks is wrapped in <p>; its margins are handled here instead.
+   Card images too: VitePress gives every `.vp-doc img` a 1rem margin. */
 .vp-blog-card p,
+.vp-blog-card img,
 .vp-blog-byline p,
 .vp-blog-post-nav p {
   margin: 0;
@@ -68,14 +70,13 @@
   object-position: var(--vp-blog-image-position, center);
 }
 
-/* `imageFit: contain`: the whole image, letterboxed, for logos and diagrams. */
-.vp-blog-card--contain .vp-blog-card__image {
-  background: var(--vp-c-bg-alt);
-}
-
+/* `imageFit: contain`: the whole image, letterboxed, for logos and diagrams. The letterbox
+   colour is on the image, not its wrapper, so it stays inside the image's frame when the list
+   layout insets the image. */
 .vp-blog-card--contain .vp-blog-card__image img {
   box-sizing: border-box;
   padding: 12px 16px;
+  background: var(--vp-c-bg-alt);
   object-fit: contain;
 }
 
@@ -141,25 +142,23 @@
   padding-top: 4px;
 }
 
-/* List: image beside the text on wide screens. */
+/* List: image beside the text on wide screens. The image keeps its 16:9 frame, as in every
+   other card, so the whole image shows whatever the length of the text beside it. It sits
+   inset by the body's padding, at the top, with its own rounded corners. */
 @media (min-width: 640px) {
   .vp-blog-list--list .vp-blog-card--with-image {
     flex-direction: row;
+    align-items: flex-start;
   }
 
   .vp-blog-list--list .vp-blog-card__image {
+    box-sizing: border-box;
     flex: 0 0 34%;
-  }
-
-  .vp-blog-list--list .vp-blog-card__image a,
-  .vp-blog-list--list .vp-blog-card__image p {
-    height: 100%;
+    padding: 20px 0 20px 20px;
   }
 
   .vp-blog-list--list .vp-blog-card__image img {
-    height: 100%;
-    aspect-ratio: auto;
-    min-height: 160px;
+    border-radius: calc(var(--vp-blog-card-radius) / 2);
   }
 }
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- In the `list` layout on wide screens, post images keep their 16:9 frame instead of stretching to the height of the text beside them and being cropped to fit, so the whole image shows. The image is inset by the card's padding, sits at the top and has rounded corners, to line up with the text beside it
+- With `imageFit: contain`, the letterbox colour stays inside the image's frame instead of filling the space around an inset image
+- Card images no longer pick up VitePress's 1rem image margin, which left a band of empty space above and below the image in every layout
+
 ## [0.7.1] - 2026-10-22
 
 ### Changed
