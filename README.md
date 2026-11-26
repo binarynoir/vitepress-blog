@@ -10,11 +10,11 @@ lists posts from the whole site, and **section blogs** list the posts of one
 folder, the way section glossaries and tagged pages work. Every blog gets its
 own RSS feed.
 
-[Documentation and live demo](https://binarynoir.tech/plugins/blog/)
+[Documentation and live demo](https://binarynoir.com/plugins/blog/)
 
 [![Support me on Buy Me a Coffee](https://img.shields.io/badge/Support%20me-Buy%20Me%20a%20Coffee-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/binarynoir)
 [![Support me on Ko-fi](https://img.shields.io/badge/Support%20me-Ko--fi-blue?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/binarynoir)
-[![More tools](https://img.shields.io/badge/Website-binarynoir.tech-8c8c8c?style=for-the-badge)](https://binarynoir.tech)
+[![More tools](https://img.shields.io/badge/Website-binarynoir.com-8c8c8c?style=for-the-badge)](https://binarynoir.com)
 
 ## What this does
 
@@ -226,7 +226,7 @@ feeds, but the page is still built and can be opened by its URL. With the
 `vitepress dev`.
 
 To leave drafts out of the build entirely, use
-[`@binarynoir/vitepress-exclude`](https://binarynoir.tech/plugins/exclude/)'s
+[`@binarynoir/vitepress-exclude`](https://binarynoir.com/plugins/exclude/)'s
 `excludeFrontmatter` option, and the same option in Auto Sidebar and Auto
 Navbar to hide them from the menus. The blog lists only what VitePress builds,
 so nothing else changes:
@@ -302,7 +302,7 @@ take their place by date. Feeds ignore pinning and stay in date order.
 `sticky` and `stickyLimit`, the old names of `pinned` and `pinLimit`, are
 still read, so existing posts and pages keep working.
 
-To keep pinned posts on top of an [Auto Sidebar](https://binarynoir.tech/plugins/auto-sidebar/)
+To keep pinned posts on top of an [Auto Sidebar](https://binarynoir.com/plugins/auto-sidebar/)
 sidebar too, sort the blog folder by pinning, then date:
 
 ```txt
@@ -584,7 +584,7 @@ link that copy. Public paths (`/cover.png`) and URLs are linked as they are.
 | `cover`          | `false`                                                         | Each post's image under its byline.                                                                                           |
 | `postNav`        | `true`                                                          | Newer and older post links at the end of each post, in place of VitePress's previous / next links.                            |
 | `drafts`         | `false`                                                         | List drafts, marked. Pass `process.env.NODE_ENV !== 'production'` for dev only.                                               |
-| `stripTags`      | `true`                                                          | Remove [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/) syntax from titles and summaries.                      |
+| `stripTags`      | `true`                                                          | Remove [Markdown Tags](https://binarynoir.com/plugins/markdown-tags/) syntax from titles and summaries.                       |
 | `feedLimit`      | `20`                                                            | Most posts in each feed.                                                                                                      |
 | `imagesDir`      | `'blog-images'`                                                 | Output folder for copied post images.                                                                                         |
 | `pageSize`       | `10`                                                            | Posts per page on blog pages that don't set `pageSize`. `0` turns pages off.                                                  |
@@ -678,7 +678,7 @@ Every generated element has a `vp-blog-` class (`vp-blog-card`,
   to blog pages and posts, and reloads them when any post is added, edited or
   deleted.
 - **Pages kept out of the build aren't listed.** Anything `srcExclude` leaves
-  out (including [Exclude](https://binarynoir.tech/plugins/exclude/) rules) is
+  out (including [Exclude](https://binarynoir.com/plugins/exclude/) rules) is
   skipped, so a list never links to a missing page.
 - **Rewrites are followed.** Links and feeds use the path a page is served at.
 - **Plain markdown-it**: `blogMarkdown` needs VitePress's `env.path`,
@@ -719,8 +719,8 @@ Pull requests are welcome too.
 ## More from BinaryNoir
 
 <p align="center">
-  <a href="https://binarynoir.tech">
-    <img alt="BinaryNoir" src="https://binarynoir.tech/logo-horizontal.png" width="320">
+  <a href="https://binarynoir.com">
+    <img alt="BinaryNoir" src="https://binarynoir.com/logo-horizontal.png" width="320">
   </a>
 </p>
 
@@ -728,16 +728,16 @@ Blog is one of a family of open-source tools from BinaryNoir.
 
 **Pairs well with Blog**
 
-- [Reading Time Tag](https://binarynoir.tech/plugins/reading-time-tag): reading-time estimates
-- [Markdown Tags](https://binarynoir.tech/plugins/markdown-tags/): inline status badges and tagged-pages lists
-- [Exclude](https://binarynoir.tech/plugins/exclude/): keep pages out of the build with a `.exclude` file
+- [Reading Time Tag](https://binarynoir.com/plugins/reading-time-tag): reading-time estimates
+- [Markdown Tags](https://binarynoir.com/plugins/markdown-tags/): inline status badges and tagged-pages lists
+- [Exclude](https://binarynoir.com/plugins/exclude/): keep pages out of the build with a `.exclude` file
 
-**New:** [Blog for Vite](https://binarynoir.tech/plugins/vite-blog): a Markdown blog for a plain Vite site, with search, feeds and a strict CSP
+**New:** [Blog for Vite](https://binarynoir.com/plugins/vite-blog): a Markdown blog for a plain Vite site, with search, feeds and a strict CSP
 
-**See them all:** VitePress plugins, Vite plugins, editor extensions and command-line tools, with documentation and live demos, at **[binarynoir.tech](https://binarynoir.tech)**.
+**See them all:** VitePress plugins, Vite plugins, editor extensions and command-line tools, with documentation and live demos, at **[binarynoir.com](https://binarynoir.com)**.
 
 <!-- binarynoir:more:end -->
 
 ## Author
 
-John Smith III, [BinaryNoir](https://binarynoir.tech). Thanks to all contributors and users for their support and feedback.
+John Smith III, [BinaryNoir](https://binarynoir.com). Thanks to all contributors and users for their support and feedback.
